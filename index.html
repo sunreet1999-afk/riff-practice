@@ -1,0 +1,719 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d8a6c">
+<meta name="app-store" content="riff-practice">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Riff Practice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+html,body{margin:0}
+:root{padding-top:env(safe-area-inset-top,0px)}
+/* Layout: lock screen, then Situation -> Jokes (timer rounds) with fixed bottom nav and a private history list */
+:root{
+  --bg:#f3f7f4; --card:#ffffff; --ink:#18241f; --muted:#62736b; --line:#dbe7e0;
+  --accent:#0d8a6c; --accent-ink:#ffffff; --accent-soft:#d9f1e8; --hot:#e0482f; --ok:#0d8a6c; --danger:#d63b40;
+  --shadow:0 6px 20px rgba(20,70,50,.08);
+  --font:"Nunito",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111916; --card:#1a2420; --ink:#e9f3ee; --muted:#9ab0a6; --line:#2b3a33;
+    --accent:#3fcf9f; --accent-ink:#0d1512; --accent-soft:#1f3a30; --hot:#ff7a5c; --ok:#3fcf9f; --danger:#ff6b6f;
+    --shadow:0 6px 20px rgba(0,0,0,.3); color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111916; --card:#1a2420; --ink:#e9f3ee; --muted:#9ab0a6; --line:#2b3a33;
+  --accent:#3fcf9f; --accent-ink:#0d1512; --accent-soft:#1f3a30; --hot:#ff7a5c; --ok:#3fcf9f; --danger:#ff6b6f;
+  --shadow:0 6px 20px rgba(0,0,0,.3); color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font-family:var(--font); font-size:17px; line-height:1.45; -webkit-tap-highlight-color:transparent}
+.wrap{
+  max-width:560px; margin:0 auto; padding-block:16px 130px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+header{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; flex-wrap:wrap}
+.brand{font-weight:900; font-size:22px; letter-spacing:-.3px}
+.brand span{color:var(--hot)}
+.hbtns{display:flex; gap:8px; flex-wrap:wrap}
+.ghost{background:transparent; border:1.5px solid var(--line); color:var(--ink); font:inherit; font-size:14px; font-weight:700; padding:8px 12px; border-radius:12px; cursor:pointer; min-height:40px}
+.status{font-size:13px; font-weight:700; color:var(--muted); margin:0 0 12px; display:flex; align-items:center; gap:6px}
+.status i{width:8px; height:8px; border-radius:50%; background:var(--muted); display:inline-block; flex:none}
+.status.saved i{background:var(--ok)}
+.status.error i{background:var(--danger)}
+.steps{display:flex; gap:6px; margin:0 0 20px}
+.steps i{flex:1; height:6px; border-radius:6px; background:var(--line); transition:background .3s}
+.steps i.on{background:var(--accent)}
+.stepLabel{font-size:13px; font-weight:800; color:var(--accent); text-transform:uppercase; letter-spacing:1px}
+h1{font-size:26px; font-weight:900; margin:4px 0 6px; letter-spacing:-.4px; text-wrap:balance}
+.sub{color:var(--muted); margin:0 0 18px; font-size:15px}
+textarea,input[type=text],input[type=password]{
+  width:100%; font:inherit; color:var(--ink); background:var(--card);
+  border:2px solid var(--line); border-radius:16px; padding:14px; outline:none; transition:border-color .2s;
+}
+textarea{min-height:160px; resize:vertical}
+textarea:focus,input:focus{border-color:var(--accent)}
+input:disabled{opacity:.55}
+button:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+.row{display:flex; gap:8px}
+.row input{flex:1; min-width:0}
+.btn{font:inherit; font-weight:800; border:none; border-radius:16px; padding:14px 18px; cursor:pointer; background:var(--accent); color:var(--accent-ink); min-height:52px; transition:transform .1s, opacity .2s}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.5; cursor:default}
+.btn.sec{background:var(--accent-soft); color:var(--ink)}
+.btn.stop{background:var(--hot); color:#fff}
+.btn.full{width:100%}
+.linkbtn{background:none; border:none; color:var(--accent); font:inherit; font-weight:800; font-size:15px; padding:10px 0; cursor:pointer}
+.form{display:flex; flex-direction:column; gap:12px}
+.err{color:var(--danger); font-weight:700; font-size:14px; min-height:20px; margin:0}
+.lockicon{width:56px; height:56px; border-radius:18px; background:var(--accent-soft); display:grid; place-items:center; margin:18px 0 10px}
+.lockicon svg{width:28px; height:28px}
+.code{font-family:var(--mono); font-size:22px; font-weight:700; letter-spacing:1.5px; text-align:center; background:var(--card); border:2px dashed var(--accent); border-radius:16px; padding:18px 12px; overflow-wrap:anywhere; user-select:all}
+.checkrow{display:flex; gap:10px; align-items:flex-start; font-weight:700; cursor:pointer}
+.checkrow input{width:22px; height:22px; margin-top:2px; accent-color:var(--accent); flex:none}
+.warn{background:var(--accent-soft); border-radius:14px; padding:12px 14px; font-size:14px; font-weight:600}
+
+/* timer */
+.modes{display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px}
+.mode{
+  font:inherit; font-weight:800; font-size:14px; line-height:1.15; border:2px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:14px; padding:10px 4px; cursor:pointer; min-height:60px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+}
+.mode small{font-size:12px; font-weight:700; color:var(--muted)}
+.mode.on{border-color:var(--accent); background:var(--accent-soft)}
+.mode:disabled{opacity:.5; cursor:default}
+.timerbox{display:flex; align-items:center; gap:12px; background:var(--card); border-radius:20px; padding:14px 16px; box-shadow:var(--shadow); margin-bottom:12px}
+.clock{font-family:var(--mono); font-size:44px; font-weight:800; line-height:1; flex:1; font-variant-numeric:tabular-nums; letter-spacing:-1px}
+.clock.hot{color:var(--hot)}
+.clock.free{font-family:var(--font); font-size:20px; font-weight:800; color:var(--muted); letter-spacing:0}
+.timerbox .btn{min-width:110px}
+.bar{height:6px; border-radius:6px; background:var(--line); overflow:hidden; margin:-4px 0 14px}
+.bar i{display:block; height:100%; width:100%; background:var(--accent); transform-origin:left; transition:transform .2s linear}
+.bar i.hot{background:var(--hot)}
+.result{background:var(--accent-soft); border-radius:14px; padding:12px 14px; font-weight:800; margin-bottom:12px}
+.counter{display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; background:var(--card); border-radius:20px; padding:14px 18px; margin:0 0 14px; box-shadow:var(--shadow)}
+.counter b{font-size:44px; font-weight:900; color:var(--accent); line-height:1; display:inline-block; font-variant-numeric:tabular-nums}
+.counter span{font-weight:700; color:var(--muted)}
+.counter em{font-style:normal; font-weight:800; font-size:14px; margin-left:auto; color:var(--hot)}
+.hintline{font-size:14px; font-weight:700; color:var(--muted); margin:8px 0 0}
+.bump{animation:bump .35s ease}
+@keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.35)}100%{transform:scale(1)}}
+.rhead{font-size:13px; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.8px; margin:18px 0 8px}
+ul.list{list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px}
+.item{display:flex; align-items:flex-start; gap:10px; background:var(--card); border-radius:16px; padding:12px; box-shadow:var(--shadow)}
+.num{flex:none; width:28px; height:28px; border-radius:50%; background:var(--accent-soft); color:var(--accent); font-weight:900; font-size:14px; display:grid; place-items:center; margin-top:1px}
+.txt{flex:1; min-width:0; overflow-wrap:anywhere; padding-top:2px}
+.item input[type=text]{padding:8px 10px; border-radius:10px}
+.icon{flex:none; width:40px; height:40px; border-radius:12px; border:none; background:transparent; color:var(--muted); font-size:18px; cursor:pointer; display:grid; place-items:center; font-family:var(--font)}
+.icon:active{background:var(--accent-soft)}
+.empty{color:var(--muted); text-align:center; padding:28px 12px; border:2px dashed var(--line); border-radius:16px; margin-top:16px}
+.hist{display:flex; flex-direction:column; gap:10px}
+.hcard{background:var(--card); border-radius:16px; padding:14px; box-shadow:var(--shadow); display:flex; gap:10px; align-items:center}
+.hcard .main{flex:1; min-width:0; cursor:pointer}
+.hcard .d{font-size:13px; font-weight:800; color:var(--accent)}
+.hcard .s{font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.hcard .m{font-size:13px; color:var(--muted)}
+.hcard .cur{font-size:12px; font-weight:800; background:var(--accent-soft); color:var(--ink); padding:2px 8px; border-radius:999px; margin-left:6px}
+.delbtn{font:inherit; font-size:13px; font-weight:800; border:1.5px solid var(--line); background:transparent; color:var(--muted); border-radius:10px; padding:8px 10px; cursor:pointer; min-height:40px; white-space:nowrap}
+.delbtn.arm{background:var(--danger); border-color:var(--danger); color:#fff}
+.note{font-size:13px; color:var(--muted); margin-top:14px}
+nav{
+  position:fixed; left:0; right:0; bottom:0; background:linear-gradient(transparent,var(--bg) 30%);
+  padding:24px max(16px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+nav .in{max-width:560px; margin:0 auto; display:flex; gap:10px}
+nav .btn{flex:1}
+nav .btn.back{flex:0 0 auto; min-width:96px}
+.toast{position:fixed; left:50%; bottom:calc(100px + env(safe-area-inset-bottom, 0px)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:12px; font-weight:700; font-size:14px; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; text-align:center}
+.toast.show{opacity:1}
+@media (max-width:360px){ .modes{grid-template-columns:repeat(2,1fr)} }
+@media (prefers-reduced-motion: reduce){ .bump{animation:none} *{transition:none !important} }
+</style>
+
+</head>
+<body>
+<script>
+/* GitHub Pages shim: stores encrypted sessions in this browser only (localStorage). Nothing is sent anywhere. */
+(function(){
+  var P = (document.querySelector('meta[name="app-store"]')||{}).content || 'app';
+  function k(path){ return P + ':' + path; }
+  function rd(path){ try{ var v = localStorage.getItem(k(path)); return v ? JSON.parse(v) : null; }catch(e){ return null; } }
+  function snap(id, d){ return { id:id, exists: d!=null, data:function(){ return d==null?undefined:d; }, metadata:{fromCache:false,hasPendingWrites:false} }; }
+  function docRef(col, id){
+    var path = col + '/' + id;
+    return {
+      id:id, path:path,
+      get: async function(){ return snap(id, rd(path)); },
+      set: async function(d){
+        try{ localStorage.setItem(k(path), JSON.stringify(d)); }
+        catch(e){ throw { code:'quota_exceeded', message:'Phone ki storage full hai' }; }
+        var ix = rd(col + '/__index') || []; if(ix.indexOf(id) < 0){ ix.push(id); localStorage.setItem(k(col + '/__index'), JSON.stringify(ix)); }
+      },
+      delete: async function(){
+        try{ localStorage.removeItem(k(path)); var ix = (rd(col + '/__index') || []).filter(function(x){ return x !== id; }); localStorage.setItem(k(col + '/__index'), JSON.stringify(ix)); }catch(e){}
+      }
+    };
+  }
+  function collection(col){
+    return {
+      path: col,
+      doc: function(id){ return docRef(col, id); },
+      get: async function(){
+        var ix = rd(col + '/__index') || [];
+        var docs = ix.map(function(id){ return snap(id, rd(col + '/' + id)); }).filter(function(s){ return s.exists; });
+        return { docs:docs, size:docs.length, empty:!docs.length, docChanges:function(){ return []; } };
+      }
+    };
+  }
+  var db = { collection: collection, doc: function(p){ var i = p.lastIndexOf('/'); return docRef(p.slice(0,i), p.slice(i+1)); } };
+  var user = { id: async function(){ return 'me'; } };
+  var downloads = { save: async function(o){
+    var blob = o.data instanceof Blob ? o.data : new Blob([o.data]);
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = o.filename; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+    return { status:'saved' };
+  } };
+  var caps = { db:db, user:user, downloads:downloads };
+  window.claude = { use: async function(n){ return caps[n] || null; } };
+})();
+</script>
+<div class="wrap">
+  <header>
+    <div class="brand">riff<span>!</span></div>
+    <div class="hbtns" id="hbtns" hidden>
+      <button class="ghost" id="histBtn">Purane sessions</button>
+      <button class="ghost" id="newBtn">+ New</button>
+      <button class="ghost" id="lockBtn">Lock</button>
+    </div>
+  </header>
+  <div class="status" id="status" hidden><i></i><span id="statusText"></span></div>
+  <div class="steps" id="steps" hidden><i></i><i></i></div>
+
+  <!-- LOCK SCREENS -->
+  <section data-view="boot">
+    <div class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+    <h1>Load ho raha hai...</h1>
+  </section>
+  <section data-view="na" hidden>
+    <h1>Yahan nahi khul sakta</h1>
+    <p class="sub">Is browser mein ye app nahi chal sakta. Phone pe Chrome mein kholo.</p>
+  </section>
+  <section data-view="setup" hidden>
+    <div class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+    <h1>Apna lock banao</h1>
+    <p class="sub">Har session is password se lock hokar sirf isi phone ke browser mein save hoga. Data kahin upload nahi hota.</p>
+    <form class="form" id="setupForm">
+      <input type="password" id="setPw" placeholder="Password (kam se kam 12 characters)" autocomplete="new-password">
+      <input type="password" id="setPw2" placeholder="Password dobara" autocomplete="new-password">
+      <p class="err" id="setErr"></p>
+      <button class="btn full" type="submit" id="setBtn">Lock banao</button>
+    </form>
+  </section>
+  <section data-view="rc" hidden>
+    <h1>Recovery code save karo</h1>
+    <p class="sub">Password bhool gaye to sirf ye code kaam aayega. Ye dobara nahi dikhega.</p>
+    <div class="form">
+      <div class="code" id="rcCode"></div>
+      <button class="btn sec full" type="button" id="rcCopy">Copy karo</button>
+      <div class="warn">Password aur recovery code dono kho gaye to data hamesha ke liye chala jayega. Koi bhi use wapas nahi la payega.</div>
+      <label class="checkrow"><input type="checkbox" id="rcSaved"> Maine recovery code safe jagah save kar liya</label>
+      <p class="err" id="rcErr"></p>
+      <button class="btn full" type="button" id="rcDone">Aage badho</button>
+    </div>
+  </section>
+  <section data-view="unlock" hidden>
+    <div class="lockicon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>
+    <h1>Unlock karo</h1>
+    <p class="sub">Tumhare sessions locked hain.</p>
+    <form class="form" id="unlockForm">
+      <input type="password" id="unPw" placeholder="Password" autocomplete="current-password">
+      <p class="err" id="unErr"></p>
+      <button class="btn full" type="submit" id="unBtn">Unlock</button>
+      <button class="linkbtn" type="button" id="toRecover">Password bhool gaye?</button>
+    </form>
+  </section>
+  <section data-view="recover" hidden>
+    <h1>Recovery code daalo</h1>
+    <p class="sub">Wo code jo lock banate waqt save kiya tha.</p>
+    <form class="form" id="recoverForm">
+      <input type="text" id="recCode" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" autocomplete="off" autocapitalize="characters" spellcheck="false">
+      <p class="err" id="recErr"></p>
+      <button class="btn full" type="submit" id="recBtn">Aage badho</button>
+      <button class="linkbtn" type="button" id="toUnlock">Wapas password se unlock karo</button>
+    </form>
+  </section>
+  <section data-view="newpw" hidden>
+    <h1>Naya password banao</h1>
+    <p class="sub">Recovery code sahi tha. Ab naya password set karo.</p>
+    <form class="form" id="newpwForm">
+      <input type="password" id="npPw" placeholder="Naya password (kam se kam 12 characters)" autocomplete="new-password">
+      <input type="password" id="npPw2" placeholder="Naya password dobara" autocomplete="new-password">
+      <p class="err" id="npErr"></p>
+      <button class="btn full" type="submit" id="npBtn">Password set karo</button>
+    </form>
+  </section>
+
+  <!-- APP -->
+  <section data-view="1" hidden>
+    <div class="stepLabel">Step 1 of 2</div>
+    <h1>Situation</h1>
+    <p class="sub">Koi situation ya kisi ki boli hui line likho, jispe jokes banane hain.</p>
+    <textarea id="situation" placeholder="e.g. Dost: &quot;Bhai aaj traffic itna tha ki main paidal pahunch jaata&quot;"></textarea>
+  </section>
+
+  <section data-view="2" hidden>
+    <div class="stepLabel">Step 2 of 2</div>
+    <h1>Jokes</h1>
+    <p class="sub" id="sitPreview"></p>
+    <div class="modes" id="modes" role="radiogroup" aria-label="Timer mode">
+      <button class="mode" data-mode="sf" role="radio">Super fast<small>30 sec</small></button>
+      <button class="mode" data-mode="f" role="radio">Fast<small>60 sec</small></button>
+      <button class="mode" data-mode="l" role="radio">Long<small>3 min</small></button>
+      <button class="mode" data-mode="free" role="radio">No timer<small>aaram se</small></button>
+    </div>
+    <div class="timerbox">
+      <div class="clock" id="clock">0:30</div>
+      <button class="btn" id="startBtn">Start</button>
+    </div>
+    <div class="bar" id="bar"><i id="barFill"></i></div>
+    <div class="result" id="result" hidden></div>
+    <div class="counter"><b id="jCount">0</b><span>jokes likhe</span><em id="roundLive"></em></div>
+    <div class="row">
+      <input type="text" id="jInput" placeholder="Joke likho, Enter dabao..." enterkeyhint="send" autocomplete="off">
+      <button class="btn" id="jAdd">Add</button>
+    </div>
+    <p class="hintline" id="inputHint"></p>
+    <div id="jList"></div>
+  </section>
+
+  <section data-view="h" hidden>
+    <h1>Purane sessions</h1>
+    <p class="sub">Kholne ke liye tap karo.</p>
+    <div class="hist" id="hList"></div>
+    <p class="note">Har session tumhare password se lock hokar save hota hai. Sab kuch sirf isi phone ke browser mein locked pada hai. Browser data clear karoge to sessions chale jayenge, isliye PDF backup rakhna.</p>
+  </section>
+</div>
+
+<nav id="nav" hidden>
+  <div class="in">
+    <button class="btn sec back" id="backBtn">Back</button>
+    <button class="btn" id="nextBtn">Next</button>
+  </div>
+</nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function(){
+  var CUR_KEY='riff-practice-cur-id', IDLE_MS=5*60*1000, VAULT='_vault';
+  var MODES={ sf:{name:'Super fast', secs:30}, f:{name:'Fast', secs:60}, l:{name:'Long', secs:180}, free:{name:'No timer', secs:0} };
+  var $=function(id){ return document.getElementById(id); };
+  var te=new TextEncoder(), td=new TextDecoder();
+
+  /* ---------- crypto (same scheme as Thought Record) ---------- */
+  function b64(buf){ var b=new Uint8Array(buf), s=''; for(var i=0;i<b.length;i++) s+=String.fromCharCode(b[i]); return btoa(s); }
+  function ub64(str){ var s=atob(str), b=new Uint8Array(s.length); for(var i=0;i<s.length;i++) b[i]=s.charCodeAt(i); return b; }
+  function randB64(n){ return b64(crypto.getRandomValues(new Uint8Array(n))); }
+  async function deriveKey(secret, saltB64){
+    var base=await crypto.subtle.importKey('raw', te.encode(secret), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey({name:'PBKDF2', salt:ub64(saltB64), iterations:310000, hash:'SHA-256'}, base, {name:'AES-GCM', length:256}, false, ['encrypt','decrypt']);
+  }
+  async function seal(key, bytes){ var iv=crypto.getRandomValues(new Uint8Array(12)); return b64(iv)+'.'+b64(await crypto.subtle.encrypt({name:'AES-GCM', iv:iv}, key, bytes)); }
+  async function unseal(key, str){ var p=str.split('.'); return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv:ub64(p[0])}, key, ub64(p[1]))); }
+  function importDataKey(raw){ return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt','decrypt']); }
+  async function wrapRaw(raw, secret){ var salt=randB64(16); return { salt:salt, wrapped: await seal(await deriveKey(secret, salt), raw) }; }
+  async function unwrapRaw(wrapped, secret, salt){ return unseal(await deriveKey(secret, salt), wrapped); }
+  function makeCode(){ var abc='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', r=crypto.getRandomValues(new Uint8Array(20)), out=''; for(var i=0;i<20;i++){ if(i && i%4===0) out+='-'; out+=abc[r[i]%abc.length]; } return out; }
+  function normCode(c){ return String(c).toUpperCase().replace(/[^A-Z0-9]/g,''); }
+
+  /* ---------- state ---------- */
+  var col=null, vault=null, dataKey=null, downloads=null;
+  var sessions={}, state=null, view='boot', editingId=null;
+  var pendingVault=null, pendingRaw=null, recoveredRaw=null;
+  var run=null;          // {roundId, endAt, secs} while a timed round is running
+  var lastResult='';     // summary line after a timed round ends
+
+  function uid(p){ return (p||'s') + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function fresh(){ var t=Date.now(); return { id:uid(), step:1, situation:'', mode:'sf', rounds:[], jokes:[], createdAt:t, updatedAt:t }; }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function bump(el){ el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+  function toast(msg){ var t=$('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(function(){t.classList.remove('show');},2600); }
+  function normalize(s, id){
+    if(!s || !Array.isArray(s.jokes)) return null;
+    s.id=id||s.id||uid();
+    s.rounds=Array.isArray(s.rounds)?s.rounds.map(function(r){ return { id:String(r.id), n:Number(r.n)||1, mode:MODES[r.mode]?r.mode:'free', secs:Number(r.secs)||0, at:Number(r.at)||0 }; }):[];
+    s.jokes=s.jokes.map(function(j){ return { id:j.id||uid('j'), text:String(j.text||''), round:j.round==null?null:String(j.round) }; });
+    s.situation=String(s.situation||''); s.mode=MODES[s.mode]?s.mode:'sf'; s.step=s.step===2?2:1;
+    s.createdAt=Number(s.createdAt)||Date.now(); s.updatedAt=Number(s.updatedAt)||s.createdAt;
+    return s;
+  }
+  function setCur(id){ try{ localStorage.setItem(CUR_KEY, id); }catch(e){} }
+  function getCur(){ try{ return localStorage.getItem(CUR_KEY); }catch(e){ return null; } }
+  async function encState(s){ return seal(dataKey, te.encode(JSON.stringify(s))); }
+  async function decState(str){ return JSON.parse(td.decode(await unseal(dataKey, str))); }
+  function roundJokes(s, rid){ return s.jokes.filter(function(j){ return j.round===rid; }); }
+
+  /* ---------- status + saving ---------- */
+  function setStatus(kind){
+    $('status').className='status'+(kind==='saved'?' saved':kind==='error'?' error':'');
+    $('statusText').textContent={ saving:'Lock karke save ho raha hai...', saved:'Is phone pe encrypted save hai', error:'Save nahi hua. Phone ki storage check karo.', idle:'Locked aur private' }[kind]||'';
+  }
+  var timer=null, writing=false, again=false;
+  function hasContent(s){ s=s||state; return !!s && (s.situation.trim() || s.jokes.length); }
+  function save(){
+    if(!state) return;
+    state.updatedAt=Date.now(); sessions[state.id]=state; setCur(state.id);
+    if(!hasContent()) return;
+    setStatus('saving'); clearTimeout(timer); timer=setTimeout(flush, 900);
+  }
+  async function flush(){
+    if(!col || !dataKey || !state || !hasContent()) return;
+    if(writing){ again=true; return; }
+    writing=true;
+    try{ await col.doc(state.id).set({ v:1, enc: await encState(state) }); setStatus('saved'); }
+    catch(e){ setStatus('error'); }
+    writing=false;
+    if(again){ again=false; await flush(); }
+  }
+
+  /* ---------- views ---------- */
+  var LOCKED=['boot','na','setup','rc','unlock','recover','newpw'];
+  function show(v){
+    view=v; editingId=null;
+    if(typeof v==='number' && state && state.step!==v){ state.step=v; save(); }
+    render(); window.scrollTo({top:0, behavior:'smooth'});
+  }
+  function render(){
+    document.querySelectorAll('section').forEach(function(s){ s.hidden=String(s.dataset.view)!==String(view); });
+    var locked=LOCKED.indexOf(view)>=0, isStep=typeof view==='number';
+    $('hbtns').hidden=locked; $('status').hidden=locked; $('nav').hidden=locked; $('steps').hidden=!isStep;
+    if(locked) return;
+    document.querySelectorAll('#steps i').forEach(function(b,i){ b.classList.toggle('on', isStep && i<view); });
+    $('backBtn').hidden=isStep && view===1;
+    $('backBtn').textContent=isStep?'Back':'Wapas';
+    $('nextBtn').hidden=!isStep;
+    $('nextBtn').textContent=view===2?'Download PDF':'Next';
+    $('histBtn').textContent=isStep?'Purane sessions':'Current session';
+    if(view===1) $('situation').value=state.situation;
+    if(view===2) renderJokes();
+    if(view==='h') renderHistory();
+  }
+  $('backBtn').onclick=function(){ if(run) stopRound(); if(typeof view==='number') show(view-1); else show(state.step); };
+  $('nextBtn').onclick=function(){ if(view===2) makePDF(); else show(view+1); };
+  $('histBtn').onclick=function(){ if(run) stopRound(); if(view==='h') show(state.step); else show('h'); };
+  $('newBtn').onclick=async function(){
+    if(run) stopRound();
+    if(!hasContent()){ show(1); return; }
+    clearTimeout(timer); await flush();
+    state=fresh(); sessions[state.id]=state; setCur(state.id); lastResult=''; show(1); toast('Naya session shuru. Purana save hai.');
+  };
+  $('lockBtn').onclick=function(){ lockNow(); toast('Lock ho gaya'); };
+
+  /* ---------- lock / unlock ---------- */
+  function setBusy(btn, busy, label){ btn.disabled=busy; if(label) btn.textContent=label; }
+  function clearInputs(){ ['setPw','setPw2','unPw','recCode','npPw','npPw2','situation','jInput'].forEach(function(id){ $(id).value=''; }); $('rcCode').textContent=''; $('rcSaved').checked=false; }
+  async function lockNow(){
+    if(run) stopRound(true);
+    clearTimeout(timer); clearTimeout(idleTimer);
+    if(dataKey && state && hasContent()) await flush();
+    dataKey=null; state=null; sessions={}; pendingRaw=null; recoveredRaw=null; lastResult='';
+    clearInputs(); $('jList').innerHTML=''; $('hList').innerHTML=''; $('sitPreview').textContent='';
+    show(vault?'unlock':'setup');
+  }
+  var idleTimer=null;
+  function bumpIdle(){ clearTimeout(idleTimer); if(dataKey) idleTimer=setTimeout(function(){ if(dataKey && !run){ lockNow(); toast('5 minute kuch na karne pe lock ho gaya'); } else bumpIdle(); }, IDLE_MS); }
+  ['pointerdown','keydown','input','scroll'].forEach(function(ev){ document.addEventListener(ev, bumpIdle, {passive:true}); });
+  function pwCheck(a,b){ if(a.length<12) return 'Password kam se kam 12 characters ka hona chahiye.'; if(a!==b) return 'Dono password match nahi kar rahe.'; return ''; }
+
+  $('setupForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var pw=$('setPw').value, er=pwCheck(pw, $('setPw2').value);
+    $('setErr').textContent=er; if(er) return;
+    setBusy($('setBtn'), true, 'Lock ban raha hai...');
+    try{
+      var raw=crypto.getRandomValues(new Uint8Array(32)), rc=makeCode();
+      var p=await wrapRaw(raw, pw), r=await wrapRaw(raw, normCode(rc));
+      pendingVault={ v:1, pwSalt:p.salt, pwWrapped:p.wrapped, rcSalt:r.salt, rcWrapped:r.wrapped }; pendingRaw=raw;
+      $('rcCode').textContent=rc; $('setPw').value=''; $('setPw2').value=''; show('rc');
+    }catch(err){ $('setErr').textContent='Lock nahi ban paya. Page refresh karke dobara try karo.'; }
+    setBusy($('setBtn'), false, 'Lock banao');
+  });
+  $('rcCopy').onclick=function(){ var t=$('rcCode').textContent; try{ navigator.clipboard.writeText(t).then(function(){ toast('Code copy ho gaya'); }, selectCode); }catch(e){ selectCode(); } };
+  function selectCode(){ var r=document.createRange(); r.selectNodeContents($('rcCode')); var s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('Code select ho gaya, ab copy karo'); }
+  $('rcDone').onclick=async function(){
+    if(!$('rcSaved').checked){ $('rcErr').textContent='Pehle recovery code save karo aur box tick karo.'; return; }
+    $('rcErr').textContent=''; setBusy($('rcDone'), true, 'Save ho raha hai...');
+    try{
+      await col.doc(VAULT).set(pendingVault); vault=pendingVault; dataKey=await importDataKey(pendingRaw);
+      pendingVault=null; pendingRaw=null; $('rcCode').textContent=''; await afterUnlock();
+    }catch(err){ $('rcErr').textContent='Save nahi hua. Phone ki storage check karo.'; }
+    setBusy($('rcDone'), false, 'Aage badho');
+  };
+  $('unlockForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var pw=$('unPw').value; if(!pw){ $('unErr').textContent='Password daalo.'; return; }
+    $('unErr').textContent=''; setBusy($('unBtn'), true, 'Unlock ho raha hai...');
+    var raw=null; try{ raw=await unwrapRaw(vault.pwWrapped, pw, vault.pwSalt); }catch(err){ raw=null; }
+    if(!raw){ $('unErr').textContent='Password galat hai. Dobara try karo.'; setBusy($('unBtn'), false, 'Unlock'); return; }
+    try{ dataKey=await importDataKey(raw); $('unPw').value=''; await afterUnlock(); }
+    catch(err){ dataKey=null; $('unErr').textContent='Sessions load nahi hue. Page refresh karke dobara try karo.'; }
+    setBusy($('unBtn'), false, 'Unlock');
+  });
+  $('toRecover').onclick=function(){ $('unErr').textContent=''; show('recover'); };
+  $('toUnlock').onclick=function(){ $('recErr').textContent=''; show('unlock'); };
+  $('recoverForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var c=normCode($('recCode').value); if(c.length!==20){ $('recErr').textContent='Recovery code 20 characters ka hota hai. Check karke dobara daalo.'; return; }
+    $('recErr').textContent=''; setBusy($('recBtn'), true, 'Check ho raha hai...');
+    try{ recoveredRaw=await unwrapRaw(vault.rcWrapped, c, vault.rcSalt); $('recCode').value=''; show('newpw'); }
+    catch(err){ $('recErr').textContent='Recovery code galat hai. Dobara check karo.'; }
+    setBusy($('recBtn'), false, 'Aage badho');
+  });
+  $('newpwForm').addEventListener('submit', async function(e){
+    e.preventDefault();
+    var pw=$('npPw').value, er=pwCheck(pw, $('npPw2').value);
+    $('npErr').textContent=er; if(er) return;
+    setBusy($('npBtn'), true, 'Set ho raha hai...');
+    try{
+      var p=await wrapRaw(recoveredRaw, pw);
+      var nv={ v:1, pwSalt:p.salt, pwWrapped:p.wrapped, rcSalt:vault.rcSalt, rcWrapped:vault.rcWrapped };
+      await col.doc(VAULT).set(nv); vault=nv; dataKey=await importDataKey(recoveredRaw); recoveredRaw=null;
+      $('npPw').value=''; $('npPw2').value=''; await afterUnlock(); toast('Naya password set ho gaya');
+    }catch(err){ $('npErr').textContent='Password set nahi hua. Dobara try karo.'; }
+    setBusy($('npBtn'), false, 'Password set karo');
+  });
+  async function afterUnlock(){
+    sessions={};
+    var snap=await col.get();
+    for(var i=0;i<snap.docs.length;i++){
+      var d=snap.docs[i]; if(d.id===VAULT) continue;
+      var b=d.data()||{}, s=null;
+      if(typeof b.enc==='string'){ try{ s=normalize(await decState(b.enc), d.id); }catch(e){ s=null; } }
+      if(s) sessions[s.id]=s;
+    }
+    state=sessions[getCur()]||fresh(); sessions[state.id]=state; setCur(state.id);
+    setStatus('idle'); bumpIdle(); show(state.step);
+  }
+
+  /* ---------- step 1 ---------- */
+  $('situation').addEventListener('input', function(e){ if(!state) return; state.situation=e.target.value; save(); });
+
+  /* ---------- timer rounds ---------- */
+  function fmtClock(sec){ sec=Math.max(0,Math.ceil(sec)); return Math.floor(sec/60)+':'+String(sec%60).padStart(2,'0'); }
+  var tick=null;
+  function startRound(){
+    var m=MODES[state.mode]; if(!m.secs) return;
+    var r={ id:uid('r'), n:state.rounds.length+1, mode:state.mode, secs:m.secs, at:Date.now() };
+    state.rounds.push(r); save();
+    run={ roundId:r.id, secs:m.secs, endAt:Date.now()+m.secs*1000 };
+    lastResult='';
+    clearInterval(tick); tick=setInterval(updateClock, 200);
+    renderJokes(); updateClock();
+    var inp=$('jInput'); inp.focus();
+  }
+  function stopRound(silent){
+    if(!run) return;
+    clearInterval(tick); tick=null;
+    var rid=run.roundId, secs=run.secs, n=roundJokes(state, rid).length;
+    var r=state.rounds.find(function(x){ return x.id===rid; });
+    var early=Date.now() < run.endAt - 300;
+    run=null;
+    if(state){
+      lastResult = (early?'Round roka. ':'Time up! ') + n + ' joke' + (n===1?'':'s') + ' ' + (r?MODES[r.mode].name+' ('+fmtClock(secs)+')':'') + ' mein.';
+      save();
+      if(!silent && view===2){ renderJokes(); if(!early) toast('Time up! '+n+' jokes'); try{ if(navigator.vibrate) navigator.vibrate(200); }catch(e){} }
+    }
+  }
+  function updateClock(){
+    if(!run) return;
+    var left=(run.endAt-Date.now())/1000;
+    var clock=$('clock'), fill=$('barFill');
+    clock.textContent=fmtClock(left);
+    var hot=left<=10; clock.classList.toggle('hot', hot); fill.classList.toggle('hot', hot);
+    fill.style.transform='scaleX('+Math.max(0,left/run.secs)+')';
+    if(left<=0) stopRound();
+  }
+  $('modes').addEventListener('click', function(e){
+    var b=e.target.closest('.mode'); if(!b || run) return;
+    state.mode=b.dataset.mode; lastResult=''; save(); renderJokes();
+  });
+  $('startBtn').onclick=function(){ if(run) stopRound(); else startRound(); };
+  document.addEventListener('visibilitychange', function(){ if(run) updateClock(); });
+
+  /* ---------- jokes ---------- */
+  function currentRoundForAdd(){
+    if(run) return run.roundId;
+    if(state.mode!=='free') return null;
+    var last=state.rounds[state.rounds.length-1];
+    if(last && last.mode==='free') return last.id;
+    var r={ id:uid('r'), n:state.rounds.length+1, mode:'free', secs:0, at:Date.now() };
+    state.rounds.push(r); return r.id;
+  }
+  function addJoke(){
+    var inp=$('jInput'), v=inp.value.trim();
+    if(!v){ inp.focus(); return; }
+    var rid=currentRoundForAdd(); if(rid===null){ toast('Pehle Start dabao'); return; }
+    state.jokes.push({ id:uid('j'), text:v, round:rid });
+    inp.value=''; inp.focus(); save(); renderJokes(); bump($('jCount'));
+  }
+  $('jAdd').onclick=addJoke;
+  $('jInput').addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addJoke(); } });
+
+  function renderJokes(){
+    var m=MODES[state.mode], timed=m.secs>0;
+    $('sitPreview').textContent = state.situation.trim() ? '"'+state.situation.trim()+'"' : 'Situation nahi likhi. Back jaake likh sakte ho.';
+    document.querySelectorAll('.mode').forEach(function(b){ var on=b.dataset.mode===state.mode; b.classList.toggle('on', on); b.setAttribute('aria-checked', on); b.disabled=!!run && !on; });
+    var clock=$('clock'), sb=$('startBtn'), fill=$('barFill');
+    clock.classList.toggle('free', !timed);
+    $('bar').hidden=!timed; sb.hidden=!timed;
+    if(!timed){ clock.textContent='Bina timer ke likho'; clock.classList.remove('hot'); }
+    else if(!run){ clock.textContent=fmtClock(m.secs); clock.classList.remove('hot'); fill.classList.remove('hot'); fill.style.transform='scaleX(1)'; }
+    sb.textContent=run?'Stop':(state.rounds.some(function(r){ return r.mode===state.mode; })?'Phir se':'Start');
+    sb.classList.toggle('stop', !!run);
+    var res=$('result'); res.hidden=!lastResult; res.textContent=lastResult;
+    var canType = !timed || !!run;
+    $('jInput').disabled=!canType; $('jAdd').disabled=!canType;
+    $('inputHint').textContent = canType ? '' : 'Start dabao, timer chalte hi likhna shuru karo.';
+    $('jCount').textContent=state.jokes.length;
+    $('roundLive').textContent = run ? 'Is round: '+roundJokes(state, run.roundId).length : '';
+
+    var list=$('jList');
+    if(!state.jokes.length){ list.innerHTML='<div class="empty">Abhi koi joke nahi. Mode chuno aur shuru karo!</div>'; return; }
+    var html='', num=0;
+    var groups=state.rounds.filter(function(r){ return roundJokes(state, r.id).length || (run && run.roundId===r.id); }).slice().reverse();
+    groups.forEach(function(r){
+      var js=roundJokes(state, r.id);
+      html+='<div class="rhead">Round '+r.n+' · '+esc(MODES[r.mode].name)+(r.secs?' '+fmtClock(r.secs):'')+' · '+js.length+' jokes</div><ul class="list">';
+      js.slice().reverse().forEach(function(j){
+        var i=js.indexOf(j)+1;
+        if(j.id===editingId){
+          html+='<li class="item" data-id="'+j.id+'"><span class="num">'+i+'</span><input type="text" id="edit-'+j.id+'" class="editInput" value="'+esc(j.text)+'"><button class="icon" data-act="save" aria-label="Save">✓</button></li>';
+        } else {
+          html+='<li class="item" data-id="'+j.id+'"><span class="num">'+i+'</span><div class="txt">'+esc(j.text)+'</div><button class="icon" data-act="edit" aria-label="Edit">✎</button><button class="icon" data-act="del" aria-label="Delete">✕</button></li>';
+        }
+      });
+      html+='</ul>';
+    });
+    list.innerHTML=html;
+    var ei=list.querySelector('.editInput');
+    if(ei){ ei.focus(); ei.setSelectionRange(ei.value.length, ei.value.length); ei.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); saveEdit(); } if(e.key==='Escape'){ editingId=null; renderJokes(); } }); }
+  }
+  function saveEdit(){
+    var ei=$('jList').querySelector('.editInput'), j=state.jokes.find(function(x){ return x.id===editingId; });
+    if(ei && j){ var v=ei.value.trim(); if(v) j.text=v; }
+    editingId=null; save(); renderJokes();
+  }
+  $('jList').addEventListener('click', function(e){
+    var b=e.target.closest('button'); if(!b) return;
+    var id=b.closest('li').dataset.id, act=b.dataset.act;
+    if(act==='edit'){ editingId=id; renderJokes(); }
+    if(act==='save') saveEdit();
+    if(act==='del'){ state.jokes=state.jokes.filter(function(j){ return j.id!==id; }); save(); renderJokes(); bump($('jCount')); }
+  });
+
+  /* ---------- history ---------- */
+  function fmt(t){ try{ return new Date(t).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); }catch(e){ return ''; } }
+  function renderHistory(){
+    var h=$('hList');
+    var list=Object.keys(sessions).map(function(k){ return sessions[k]; }).filter(function(s){ return hasContent(s); }).sort(function(a,b){ return (b.updatedAt||0)-(a.updatedAt||0); });
+    if(!list.length){ h.innerHTML='<div class="empty">Abhi koi saved session nahi. Pehla session likhte hi yahan dikhega.</div>'; return; }
+    h.innerHTML=list.map(function(s){
+      var rounds=s.rounds.filter(function(r){ return roundJokes(s, r.id).length; }).length;
+      return '<div class="hcard" data-id="'+esc(s.id)+'"><div class="main" tabindex="0" role="button"><div class="d">'+fmt(s.updatedAt)+(s.id===state.id?'<span class="cur">Abhi khula</span>':'')+'</div>'+
+        '<div class="s">'+esc(s.situation.trim()||'(Situation nahi likhi)')+'</div><div class="m">'+s.jokes.length+' jokes · '+rounds+' rounds</div></div>'+
+        '<button class="delbtn" data-act="hdel">Delete</button></div>';
+    }).join('');
+  }
+  async function openSession(id){
+    var s=sessions[id]; if(!s){ toast('Ye session nahi mila'); return; }
+    clearTimeout(timer); if(state.id!==id && hasContent()) await flush();
+    state=s; setCur(id); lastResult=''; show(state.step); toast('Session khul gaya');
+  }
+  $('hList').addEventListener('click', async function(e){
+    var card=e.target.closest('.hcard'); if(!card) return;
+    var del=e.target.closest('.delbtn'), id=card.dataset.id;
+    if(del){
+      if(!del.classList.contains('arm')){ del.classList.add('arm'); del.textContent='Pakka?'; setTimeout(function(){ del.classList.remove('arm'); del.textContent='Delete'; },3000); return; }
+      try{
+        if(id===state.id) clearTimeout(timer);
+        await col.doc(id).delete(); delete sessions[id];
+        if(id===state.id){ state=fresh(); sessions[state.id]=state; setCur(state.id); }
+        toast('Session delete ho gaya'); renderHistory();
+      }catch(err){ toast('Delete nahi hua. Dobara try karo.'); }
+      return;
+    }
+    if(e.target.closest('.main')) openSession(id);
+  });
+  $('hList').addEventListener('keydown', function(e){ if(e.key==='Enter' && e.target.classList.contains('main')) openSession(e.target.closest('.hcard').dataset.id); });
+
+  /* ---------- PDF (made on the phone, never uploaded) ---------- */
+  function clean(s){
+    return String(s).replace(/[‘’‚′]/g,"'").replace(/[“”„″]/g,'"').replace(/[–—−]/g,'-')
+      .replace(/…/g,'...').replace(/₹/g,'Rs.').replace(/[​-‍️]/g,'').replace(/[^\x09\x0A\x0D\x20-\x7E\xA0-\xFF]/g,'?');
+  }
+  function buildPDF(){
+    var doc=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
+    var M=50, PW=doc.internal.pageSize.getWidth(), PH=doc.internal.pageSize.getHeight(), W=PW-2*M, y=M;
+    function ensure(h){ if(y+h>PH-M){ doc.addPage(); y=M; } }
+    function write(str,o){
+      o=o||{}; var size=o.size||11, indent=o.indent||0, lh=size*1.4;
+      doc.setFont('helvetica',o.style||'normal'); doc.setFontSize(size);
+      var c=o.color||[24,36,31]; doc.setTextColor(c[0],c[1],c[2]);
+      doc.splitTextToSize(clean(str),W-indent).forEach(function(l,i){ ensure(lh); if(i===0 && o.prefix) doc.text(o.prefix, M+indent-(o.prefixW||18), y+size); doc.text(l, M+indent, y+size); y+=lh; });
+      y+=(o.gap==null?4:o.gap);
+    }
+    function heading(t){ y+=10; ensure(30); write(t,{size:14,style:'bold',color:[13,138,108],gap:2}); doc.setDrawColor(219,231,224); doc.setLineWidth(1); doc.line(M,y,M+W,y); y+=10; }
+    var now=new Date(), pad=function(n){ return String(n).padStart(2,'0'); };
+    var rounds=state.rounds.filter(function(r){ return roundJokes(state, r.id).length; });
+    write('Joke Practice',{size:22,style:'bold',gap:2});
+    write(now.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}),{size:11,color:[98,115,107],gap:6});
+    heading('Situation'); write(state.situation.trim()||'(Kuch nahi likha)');
+    heading('Summary');
+    write('Total jokes: '+state.jokes.length+'   |   Rounds: '+rounds.length,{style:'bold'});
+    rounds.forEach(function(r,i){ write('Round '+(i+1)+': '+MODES[r.mode].name+(r.secs?' ('+fmtClock(r.secs)+')':'')+' - '+roundJokes(state, r.id).length+' jokes',{indent:12,gap:2}); });
+    rounds.forEach(function(r,i){
+      var js=roundJokes(state, r.id);
+      heading('Round '+(i+1)+' - '+MODES[r.mode].name+(r.secs?' '+fmtClock(r.secs):'')+' ('+js.length+' jokes)');
+      js.forEach(function(j,k){ write(j.text,{indent:22,prefix:(k+1)+'.',prefixW:22,gap:3}); });
+    });
+    if(!rounds.length){ heading('Jokes'); write('(Koi joke nahi)'); }
+    return { blob:doc.output('blob'), name:'jokes-'+now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+'.pdf' };
+  }
+  async function makePDF(){
+    if(run) stopRound();
+    if(!window.jspdf){ toast('PDF library load nahi hui. Page refresh karo.'); return; }
+    if(!downloads){ toast('Download nahi ho paya. Page refresh karo.'); return; }
+    var f=buildPDF();
+    try{ await downloads.save({filename:f.name, data:f.blob}); toast('PDF save ho gayi'); }
+    catch(e){ var c=e&&e.code; if(c==='declined') return; if(c==='rate_limited'){ toast('Ek download pehle se khula hai, thoda ruko'); return; } toast('PDF save nahi hui. Dobara try karo.'); }
+  }
+
+  /* ---------- boot ---------- */
+  render();
+  (async function(){
+    var c=window.claude;
+    if(!c || !c.use || !window.crypto || !crypto.subtle){ show('na'); return; }
+    c.use('downloads').then(function(d){ downloads=d; }).catch(function(){});
+    try{
+      var db=await c.use('db'), user=await c.use('user');
+      var id=user?await user.id():null;
+      if(!db || !id){ show('na'); return; }
+      col=db.collection('data/users/'+id);
+      var v=await col.doc(VAULT).get(), vd=v.exists?v.data():null;
+      if(vd && vd.pwWrapped && vd.rcWrapped){ vault=vd; show('unlock'); } else show('setup');
+    }catch(e){ show('na'); }
+  })();
+})();
+</script>
+
+</body>
+</html>
