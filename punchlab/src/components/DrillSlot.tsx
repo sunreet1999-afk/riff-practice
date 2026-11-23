@@ -8,9 +8,11 @@ interface DrillSlotProps {
   state: SlotState
   draft: string
   onDraftChange: (text: string) => void
+  /** This slot uses the structure of the week. */
+  highlight?: boolean
 }
 
-export function DrillSlot({ line, state, draft, onDraftChange }: DrillSlotProps) {
+export function DrillSlot({ line, state, draft, onDraftChange, highlight = false }: DrillSlotProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export function DrillSlot({ line, state, draft, onDraftChange }: DrillSlotProps)
       <div className="mb-2 flex items-center justify-between text-sm">
         <span className={`font-semibold ${state === 'active' ? 'text-accent' : 'text-muted'}`}>
           {line.slot + 1}. {line.structure}
+          {highlight && <span className="ml-2 rounded-md bg-accent/15 px-1.5 py-0.5 text-xs text-accent">★ This week</span>}
         </span>
         {state === 'locked' && <span className="text-muted">🔒 Locked</span>}
       </div>

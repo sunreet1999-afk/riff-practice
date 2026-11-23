@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import type { Note, Prompt, Session } from '../types'
+import type { Note, Prompt, Reaction, Session } from '../types'
 
 /** Simple key/value store for app settings. */
 export interface Setting {
@@ -12,6 +12,7 @@ export class PunchLabDB extends Dexie {
   prompts!: EntityTable<Prompt, 'id'>
   sessions!: EntityTable<Session, 'id'>
   notes!: EntityTable<Note, 'id'>
+  reactions!: EntityTable<Reaction, 'id'>
 
   constructor(name = 'punchlab') {
     super(name)
@@ -24,6 +25,9 @@ export class PunchLabDB extends Dexie {
     })
     this.version(3).stores({
       notes: '++id, createdAt',
+    })
+    this.version(4).stores({
+      reactions: '++id, sessionId, structure, createdAt',
     })
   }
 }

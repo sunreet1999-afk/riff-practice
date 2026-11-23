@@ -1,16 +1,12 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { BigButton } from '../components/BigButton'
 import { PromptView } from '../components/PromptView'
-import { Toast } from '../components/Toast'
+import { WeekStructureCard } from '../components/WeekStructureCard'
 import { repo } from '../db/repo'
 import type { Session } from '../types'
-
-interface HomeLocationState {
-  saved?: boolean
-}
 
 function resumePath(session: Session): string {
   return session.status === 'drilling' ? `/drill/${session.id}` : `/judge/${session.id}`
@@ -18,9 +14,8 @@ function resumePath(session: Session): string {
 
 export function HomeScreen() {
   const navigate = useNavigate()
-  const location = useLocation()
-  const saved = (location.state as HomeLocationState | null)?.saved === true
   const [starting, setStarting] = useState(false)
+  const [today] = useState(() => new Date())
 
   const prompt = useLiveQuery(async () => (await repo.getPromptForDay()) ?? false, [], null)
   const streak = useLiveQuery(() => repo.getStreak(), [])
@@ -48,8 +43,6 @@ export function HomeScreen() {
         </BigButton>
       }
     >
-      {saved && <Toast message="Session saved." />}
-
       {unfinished && (
         <Link
           to={resumePath(unfinished)}
@@ -86,6 +79,8 @@ export function HomeScreen() {
           <PromptView prompt={prompt} />
         )}
       </section>
+
+      <WeekStructureCard today={today} />
 
       <p className="px-1 text-sm text-muted">
         5 minutes · 10 lines · one structure per line. No editing, no ratings until time's up.

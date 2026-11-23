@@ -1,12 +1,13 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Navigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { BackLink } from '../components/BackLink'
-import { CharCount } from '../components/CharCount'
+import { PickCard } from '../components/PickCard'
 import { PromptView } from '../components/PromptView'
+import { Toast } from '../components/Toast'
 import { repo } from '../db/repo'
 import { formatDay, formatDuration, formatTime } from '../lib/format'
-import type { JudgePick, Session } from '../types'
+import type { Reaction, Session } from '../types'
 
 export function SessionDetailScreen() {
   const id = Number(useParams().id)
@@ -16,38 +17,16 @@ export function SessionDetailScreen() {
   return <Detail session={session} />
 }
 
-function PickCard({ pick, structure }: { pick: JudgePick; structure: string }) {
-  return (
-    <li className="flex flex-col gap-2 rounded-2xl border border-accent bg-surface p-3">
-      <div className="flex items-center justify-between text-sm">
-        <span className="font-semibold text-accent">
-          ★ {pick.slot + 1}. {structure}
-        </span>
-        <span aria-label={`Rated ${pick.rating} of 5`} className="font-semibold">
-          {pick.rating}/5
-        </span>
-      </div>
-      <p className={`whitespace-pre-wrap break-words ${pick.rewrite ? 'text-muted line-through decoration-muted/50' : 'text-lg'}`}>
-        {pick.original}
-      </p>
-      {pick.rewrite && <p className="whitespace-pre-wrap break-words text-lg">{pick.rewrite}</p>}
-      {pick.rewrite && (
-        <div className="flex justify-end gap-4">
-          <CharCount text={pick.original} label="Original" />
-          <CharCount text={pick.rewrite} label="Rewrite" />
-        </div>
-      )}
-    </li>
-  )
-}
-
 function Detail({ session }: { session: Session }) {
   const prompt = useLiveQuery(() => repo.getPrompt(session.promptId), [session.promptId])
+  const reactions = useLiveQuery(() => repo.listReactions(session.id!), [session.id], [] as Reaction[])
+  const saved = (useLocation().state as { saved?: boolean } | null)?.saved === true
   const pickedSlots = new Set(session.picks.map((p) => p.slot))
   const duration = session.finishedAt ? formatDuration(session.finishedAt - session.startedAt) : null
 
   return (
     <AppShell title="Session" action={<BackLink to="/sessions" />}>
+      {saved && <Toast message="Session saved. Share your best lines and log how they land." />}
       <p className="text-sm text-muted">
         {formatDay(session.startedAt)} · {formatTime(session.startedAt)}
         {duration && ` · ${duration} min`}
@@ -67,7 +46,13 @@ function Detail({ session }: { session: Session }) {
         ) : (
           <ul className="flex flex-col gap-2">
             {session.picks.map((pick) => (
-              <PickCard key={pick.slot} pick={pick} structure={session.lines[pick.slot]?.structure ?? ''} />
+              <PickCard
+                key={pick.slot}
+                sessionId={session.id!}
+                pick={pick}
+                structure={session.lines[pick.slot]?.structure ?? ''}
+                reactions={reactions.filter((r) => r.slot === pick.slot)}
+              />
             ))}
           </ul>
         )}

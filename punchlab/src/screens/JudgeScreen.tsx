@@ -61,7 +61,7 @@ function Judge({ session }: { session: Session }) {
       return { slot: l.slot, original: l.text, rewrite: d.rewrite.trim(), rating: d.rating! }
     })
     await repo.saveJudgement(session.id!, picks)
-    navigate('/', { replace: true, state: { saved: true } })
+    navigate(`/sessions/${session.id}`, { replace: true, state: { saved: true } })
   }
 
   const hint =

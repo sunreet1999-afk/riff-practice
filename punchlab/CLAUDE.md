@@ -34,7 +34,8 @@ src/
 ## Routes
 - `/` Home: today's prompt, streak, Start Drill, resume an unfinished session
 - `/prompt` add today's prompt (text situation or photo + optional caption); `/prompt?note=ID` pre-fills from a journal note
-- `/sessions` finished sessions, newest first; `/sessions/:id` detail (prompt, best lines, all 10 lines)
+- `/sessions` finished sessions, newest first; `/sessions/:id` detail (prompt, best lines with Share + Log reaction, all 10 lines)
+- After Judge saves, the app opens `/sessions/:id` so the picks can be shared right away
 - `/journal` quick-add observation notes; "Use as prompt" opens `/prompt?note=ID`
 - `/drill/:id` 5-min drill, 10 slots; earlier lines lock; timer from `session.endsAt` (wall clock)
 - `/judge/:id` pick best 2, optional rewrite with live grapheme count, rate 1–5, save
@@ -42,6 +43,15 @@ src/
 ## Data (Dexie, `src/db/db.ts`, accessed via `src/db/repo.ts`)
 - `prompts`: `{ id, dateKey, createdAt, kind: 'text'|'image', text, image?: Blob, noteId? }`
 - `notes`: `{ id, createdAt, text, usedAt? }` (`usedAt` set when a prompt is saved from the note)
+- `reactions`: `{ id, sessionId, slot, structure, text, reaction: 'laughed'|'smiled'|'none'|'flat', note, method: 'share'|'copy'|'manual', createdAt }`; many per line allowed
+
+## Structure of the week
+- `src/lib/week.ts`: ISO week; rotation over 9 structures (Free choice excluded) using a continuous week count, so it doesn't reset at New Year.
+- `src/content/structureGuide.ts`: 2-line explanation + one ORIGINAL example per structure. Never paste jokes from other sources.
+- Shown on Home and as a "★ This week" badge on the matching drill slot.
+
+## Sharing
+- `src/lib/share.ts`: Web Share API, falling back to clipboard; closing the share sheet = 'cancelled'. Shares only the line (rewrite if present), never the prompt.
 - `sessions`: `{ id, promptId, dateKey, status: 'drilling'|'judging'|'done', startedAt, endsAt, finishedAt?, activeSlot, lines[10], picks[] }`
 - Streak = consecutive local days with >= 1 `done` session; a run ending yesterday stays alive until today ends.
 - Multiple drills per day are allowed. Locked lines are persisted as you go (`lockLines`).

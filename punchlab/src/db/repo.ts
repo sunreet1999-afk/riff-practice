@@ -1,7 +1,7 @@
 import { computeStreak, localDateKey } from '../lib/dates'
 import { SLOT_COUNT, structureForSlot } from '../lib/structures'
 import { drillEndsAt } from '../lib/timer'
-import type { DrillLine, JudgePick, Note, Prompt, PromptKind, Session, SessionWithPrompt } from '../types'
+import type { DrillLine, JudgePick, Note, Prompt, PromptKind, Reaction, Session, SessionWithPrompt } from '../types'
 import { db as defaultDb, type PunchLabDB } from './db'
 
 export interface NewPromptInput {
@@ -98,6 +98,19 @@ export function createRepo(db: PunchLabDB = defaultDb) {
 
     async deleteNote(id: number): Promise<void> {
       await db.notes.delete(id)
+    },
+
+    async addReaction(input: Omit<Reaction, 'id' | 'createdAt'>, now: Date = new Date()): Promise<number> {
+      return db.reactions.add({ ...input, createdAt: now.getTime() }) as Promise<number>
+    },
+
+    /** Reactions logged for one session, oldest first. */
+    listReactions(sessionId: number): Promise<Reaction[]> {
+      return db.reactions.where('sessionId').equals(sessionId).sortBy('createdAt')
+    },
+
+    async deleteReaction(id: number): Promise<void> {
+      await db.reactions.delete(id)
     },
 
     async getStreak(today: Date = new Date()): Promise<number> {

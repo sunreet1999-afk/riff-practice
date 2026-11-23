@@ -8,6 +8,7 @@ import { repo } from '../db/repo'
 import { useNow } from '../hooks/useNow'
 import { SLOT_COUNT } from '../lib/structures'
 import { formatClock, isExpired, remainingMs } from '../lib/timer'
+import { structureOfWeek } from '../lib/week'
 import type { DrillLine, Session } from '../types'
 
 function slotState(slot: number, active: number): SlotState {
@@ -67,6 +68,7 @@ function Drill({ session }: { session: Session }) {
   }
 
   const allLocked = active >= SLOT_COUNT
+  const weekStructure = structureOfWeek(new Date(session.startedAt))
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-md flex-col">
@@ -98,6 +100,7 @@ function Drill({ session }: { session: Session }) {
             state={slotState(line.slot, active)}
             draft={draft}
             onDraftChange={setDraft}
+            highlight={line.structure === weekStructure}
           />
         ))}
       </ol>
