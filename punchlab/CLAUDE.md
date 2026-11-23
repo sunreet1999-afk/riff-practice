@@ -66,7 +66,14 @@ src/
 - `npm run build`      typecheck + production build (outputs `dist/`, incl. service worker)
 - `npm run preview`    serve the production build
 - `npm run lint`       oxlint
+- `npm run build:pages`  build for GitHub Pages (base `/riff-practice/punchlab/`, hash routing)
 - `npm run build:artifact`  single-file preview for a Claude Artifact (`dist-artifact/`): memory routing, no PWA
+
+## Deploy
+- `.github/workflows/pages.yml` (repo root) runs on push to `main`: `npm ci`, `npm test`, `npm run build:pages`, then publishes
+  the old root `index.html` at `/riff-practice/` and PunchLab at `/riff-practice/punchlab/`.
+- Live URL: https://sunreet1999-afk.github.io/riff-practice/punchlab/
+- Pages source must be "GitHub Actions" (Settings -> Pages).
 
 ## UI rules
 - Dark mode only by default; colours come from `@theme` tokens.

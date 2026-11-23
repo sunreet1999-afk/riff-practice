@@ -1,4 +1,4 @@
-import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, HashRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DrillScreen } from './screens/DrillScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { JournalScreen } from './screens/JournalScreen'
@@ -7,8 +7,13 @@ import { PromptScreen } from './screens/PromptScreen'
 import { SessionDetailScreen } from './screens/SessionDetailScreen'
 import { SessionsScreen } from './screens/SessionsScreen'
 
-/** Embedded previews (e.g. a sandboxed iframe) can't use URL paths, so they route in memory. */
-const Router = import.meta.env.VITE_ROUTER === 'memory' ? MemoryRouter : BrowserRouter
+/**
+ * memory: embedded previews (sandboxed iframe) that can't use URL paths.
+ * hash:   static hosts without SPA fallback (GitHub Pages), so reloading any screen works.
+ * browser (default): dev server and hosts that serve index.html for every path.
+ */
+const ROUTERS = { memory: MemoryRouter, hash: HashRouter, browser: BrowserRouter } as const
+const Router = ROUTERS[import.meta.env.VITE_ROUTER ?? 'browser']
 
 export default function App() {
   return (

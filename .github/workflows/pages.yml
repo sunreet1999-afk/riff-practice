@@ -1,0 +1,56 @@
+# Builds PunchLab and publishes GitHub Pages:
+#   /riff-practice/           -> the original Riff Practice index.html (unchanged)
+#   /riff-practice/punchlab/  -> PunchLab PWA
+# Requires Settings -> Pages -> Source: "GitHub Actions".
+name: Deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: punchlab
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: punchlab/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:pages
+      - name: Assemble site
+        working-directory: .
+        run: |
+          mkdir -p _site/punchlab
+          cp index.html _site/
+          cp -r punchlab/dist/. _site/punchlab/
+          touch _site/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}punchlab/
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
