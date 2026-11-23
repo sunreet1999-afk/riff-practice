@@ -30,6 +30,18 @@ src/
   test/setup.ts    loads fake-indexeddb for tests
 ```
 
+## Routes
+- `/` Home: today's prompt, streak, Start Drill, resume an unfinished session
+- `/prompt` add today's prompt (text situation or photo + optional caption)
+- `/drill/:id` 5-min drill, 10 slots; earlier lines lock; timer from `session.endsAt` (wall clock)
+- `/judge/:id` pick best 2, optional rewrite with live grapheme count, rate 1–5, save
+
+## Data (Dexie, `src/db/db.ts`, accessed via `src/db/repo.ts`)
+- `prompts`: `{ id, dateKey, createdAt, kind: 'text'|'image', text, image?: Blob }`
+- `sessions`: `{ id, promptId, dateKey, status: 'drilling'|'judging'|'done', startedAt, endsAt, finishedAt?, activeSlot, lines[10], picks[] }`
+- Streak = consecutive local days with >= 1 `done` session; a run ending yesterday stays alive until today ends.
+- Multiple drills per day are allowed. Locked lines are persisted as you go (`lockLines`).
+
 ## Commands
 - `npm run dev`        start dev server
 - `npm test`           run unit tests once (`npm run test:watch` to watch)
