@@ -10,6 +10,10 @@
   --color-accent-ink: #0f1115;
 }
 
+:root {
+  color-scheme: dark;
+}
+
 html,
 body,
 #root {

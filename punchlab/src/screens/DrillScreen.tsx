@@ -5,6 +5,7 @@ import { BigButton } from '../components/BigButton'
 import { DrillSlot, type SlotState } from '../components/DrillSlot'
 import { PromptView } from '../components/PromptView'
 import { repo } from '../db/repo'
+import { useConfirmTap } from '../hooks/useConfirmTap'
 import { useNow } from '../hooks/useNow'
 import { SLOT_COUNT } from '../lib/structures'
 import { formatClock, isExpired, remainingMs } from '../lib/timer'
@@ -35,6 +36,7 @@ function Drill({ session }: { session: Session }) {
   const [active, setActive] = useState(session.activeSlot)
   const [draft, setDraft] = useState('')
   const finishing = useRef(false)
+  const confirmFinish = useConfirmTap()
 
   const now = useNow(250)
   const left = remainingMs(session.endsAt, now)
@@ -63,8 +65,8 @@ function Drill({ session }: { session: Session }) {
   }
 
   function finishEarly() {
-    const done = active >= SLOT_COUNT
-    if (done || window.confirm('Finish now and go to Judge?')) void finish()
+    if (active >= SLOT_COUNT) void finish()
+    else confirmFinish.tap(() => void finish())
   }
 
   const allLocked = active >= SLOT_COUNT
@@ -106,8 +108,13 @@ function Drill({ session }: { session: Session }) {
       </ol>
 
       <footer className="sticky bottom-0 flex gap-2 border-t border-line bg-bg/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">
-        <BigButton variant="ghost" className="!w-auto shrink-0" onClick={finishEarly}>
-          Finish
+        <BigButton
+          variant="ghost"
+          className={`!w-auto shrink-0 ${confirmFinish.armed ? '!border-accent text-accent' : ''}`}
+          onClick={finishEarly}
+          aria-live="polite"
+        >
+          {confirmFinish.armed ? 'Tap to finish' : 'Finish'}
         </BigButton>
         <BigButton onClick={lockAndNext} disabled={allLocked}>
           {allLocked ? 'All lines locked' : draft.trim() ? 'Lock & next' : 'Skip'}

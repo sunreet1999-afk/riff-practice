@@ -4,12 +4,14 @@ import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { BigButton } from '../components/BigButton'
 import { repo } from '../db/repo'
+import { useConfirmTap } from '../hooks/useConfirmTap'
 import { formatDay, formatTime } from '../lib/format'
 import type { Note } from '../types'
 
 function NoteRow({ note }: { note: Note }) {
+  const confirmDelete = useConfirmTap()
   function remove() {
-    if (window.confirm('Delete this note?')) void repo.deleteNote(note.id!)
+    confirmDelete.tap(() => void repo.deleteNote(note.id!))
   }
   return (
     <li className="flex flex-col gap-2 rounded-2xl bg-surface p-3">
@@ -28,10 +30,12 @@ function NoteRow({ note }: { note: Note }) {
         <button
           type="button"
           onClick={remove}
-          aria-label="Delete note"
-          className="min-h-12 rounded-xl border border-line px-4 text-muted active:bg-line"
+          aria-label={confirmDelete.armed ? 'Confirm delete note' : 'Delete note'}
+          className={`min-h-12 rounded-xl border px-4 active:bg-line ${
+            confirmDelete.armed ? 'border-red-400 text-red-400' : 'border-line text-muted'
+          }`}
         >
-          Delete
+          {confirmDelete.armed ? 'Sure?' : 'Delete'}
         </button>
       </div>
     </li>

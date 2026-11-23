@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { repo } from '../db/repo'
+import { useConfirmTap } from '../hooks/useConfirmTap'
 import { formatDay } from '../lib/format'
 import { reactionMeta, shareableText } from '../lib/reactions'
 import { shareText } from '../lib/share'
@@ -16,8 +17,9 @@ interface PickCardProps {
 
 function ReactionItem({ reaction }: { reaction: Reaction }) {
   const meta = reactionMeta(reaction.reaction)
+  const confirmDelete = useConfirmTap()
   function remove() {
-    if (window.confirm('Delete this reaction?')) void repo.deleteReaction(reaction.id!)
+    confirmDelete.tap(() => void repo.deleteReaction(reaction.id!))
   }
   return (
     <li className="flex items-center gap-2 rounded-xl bg-bg py-1 pr-1 pl-3">
@@ -30,10 +32,10 @@ function ReactionItem({ reaction }: { reaction: Reaction }) {
       <button
         type="button"
         onClick={remove}
-        aria-label={`Delete reaction ${meta.label}`}
-        className="h-12 w-12 shrink-0 rounded-lg text-muted active:bg-line"
+        aria-label={confirmDelete.armed ? `Confirm delete reaction ${meta.label}` : `Delete reaction ${meta.label}`}
+        className={`h-12 min-w-12 shrink-0 rounded-lg px-2 active:bg-line ${confirmDelete.armed ? 'text-red-400' : 'text-muted'}`}
       >
-        ✕
+        {confirmDelete.armed ? 'Sure?' : '✕'}
       </button>
     </li>
   )

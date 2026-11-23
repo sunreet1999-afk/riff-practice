@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { DrillScreen } from './screens/DrillScreen'
 import { HomeScreen } from './screens/HomeScreen'
 import { JournalScreen } from './screens/JournalScreen'
@@ -7,9 +7,12 @@ import { PromptScreen } from './screens/PromptScreen'
 import { SessionDetailScreen } from './screens/SessionDetailScreen'
 import { SessionsScreen } from './screens/SessionsScreen'
 
+/** Embedded previews (e.g. a sandboxed iframe) can't use URL paths, so they route in memory. */
+const Router = import.meta.env.VITE_ROUTER === 'memory' ? MemoryRouter : BrowserRouter
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <Routes>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/prompt" element={<PromptScreen />} />
@@ -20,6 +23,6 @@ export default function App() {
         <Route path="/journal" element={<JournalScreen />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   )
 }

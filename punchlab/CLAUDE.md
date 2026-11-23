@@ -62,6 +62,7 @@ src/
 - `npm run build`      typecheck + production build (outputs `dist/`, incl. service worker)
 - `npm run preview`    serve the production build
 - `npm run lint`       oxlint
+- `npm run build:artifact`  single-file preview for a Claude Artifact (`dist-artifact/`): memory routing, no PWA
 
 ## UI rules
 - Dark mode only by default; colours come from `@theme` tokens.
@@ -70,6 +71,7 @@ src/
 - Text inputs must accept Hinglish/English/Devanagari; never strip non-ASCII.
 
 ## Conventions
+- Never use `window.confirm/alert/prompt` (blocked in embedded previews); use `useConfirmTap` (two-tap confirm).
 - Keep components small; put logic in `src/lib` as pure functions with tests.
 - Dexie schema changes: add a new `this.version(n)`; never edit an old version.
 - Work in phases; after each: `npm test`, `npm run build`, fix errors, then stop for review.
