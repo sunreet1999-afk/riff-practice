@@ -1,20 +1,25 @@
 import { computeStreak, localDateKey } from '../lib/dates'
 import { SLOT_COUNT, structureForSlot } from '../lib/structures'
 import { drillEndsAt } from '../lib/timer'
-import type { DrillLine, JudgePick, Prompt, PromptKind, Session } from '../types'
+import type { DrillLine, JudgePick, Note, Prompt, PromptKind, Session, SessionWithPrompt } from '../types'
 import { db as defaultDb, type PunchLabDB } from './db'
 
 export interface NewPromptInput {
   kind: PromptKind
   text: string
   image?: Blob
+  noteId?: number
 }
 
 export function createRepo(db: PunchLabDB = defaultDb) {
   return {
     async addPrompt(input: NewPromptInput, now: Date = new Date()): Promise<number> {
       const prompt: Prompt = { ...input, dateKey: localDateKey(now), createdAt: now.getTime() }
-      return db.prompts.add(prompt) as Promise<number>
+      return db.transaction('rw', db.prompts, db.notes, async () => {
+        const id = (await db.prompts.add(prompt)) as number
+        if (input.noteId !== undefined) await db.notes.update(input.noteId, { usedAt: now.getTime() })
+        return id
+      })
     },
 
     getPrompt(id: number): Promise<Prompt | undefined> {
@@ -67,6 +72,32 @@ export function createRepo(db: PunchLabDB = defaultDb) {
     async getUnfinishedSession(): Promise<Session | undefined> {
       const rows = await db.sessions.where('status').anyOf('drilling', 'judging').sortBy('startedAt')
       return rows.at(-1)
+    },
+
+    /** Finished sessions, newest first, each with its prompt. */
+    async listDoneSessions(): Promise<SessionWithPrompt[]> {
+      const sessions = (await db.sessions.where('status').equals('done').sortBy('startedAt')).reverse()
+      const prompts = await db.prompts.bulkGet([...new Set(sessions.map((s) => s.promptId))])
+      const byId = new Map(prompts.filter((p): p is Prompt => p !== undefined).map((p) => [p.id!, p]))
+      return sessions.map((session) => ({ session, prompt: byId.get(session.promptId) }))
+    },
+
+    async addNote(text: string, now: Date = new Date()): Promise<number> {
+      const note: Note = { text, createdAt: now.getTime() }
+      return db.notes.add(note) as Promise<number>
+    },
+
+    getNote(id: number): Promise<Note | undefined> {
+      return db.notes.get(id)
+    },
+
+    /** Journal notes, newest first. */
+    async listNotes(): Promise<Note[]> {
+      return (await db.notes.orderBy('createdAt').toArray()).reverse()
+    },
+
+    async deleteNote(id: number): Promise<void> {
+      await db.notes.delete(id)
     },
 
     async getStreak(today: Date = new Date()): Promise<number> {

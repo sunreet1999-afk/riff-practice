@@ -1,5 +1,6 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useState, type ChangeEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { BackLink } from '../components/BackLink'
 import { BigButton } from '../components/BigButton'
@@ -13,10 +14,24 @@ const TABS: { kind: PromptKind; label: string }[] = [
   { kind: 'image', label: 'Photo' },
 ]
 
+/** `/prompt?note=ID` pre-fills the form from a journal note so it can be edited before saving. */
 export function PromptScreen() {
+  const noteParam = useSearchParams()[0].get('note')
+  const noteId = noteParam ? Number(noteParam) : undefined
+  const note = useLiveQuery(async () => (noteId ? ((await repo.getNote(noteId)) ?? false) : false), [noteId], null)
+  if (note === null) return null
+  return note ? <PromptForm key={note.id} initialText={note.text} noteId={note.id} /> : <PromptForm />
+}
+
+interface PromptFormProps {
+  initialText?: string
+  noteId?: number
+}
+
+function PromptForm({ initialText = '', noteId }: PromptFormProps) {
   const navigate = useNavigate()
   const [kind, setKind] = useState<PromptKind>('text')
-  const [text, setText] = useState('')
+  const [text, setText] = useState(initialText)
   const [image, setImage] = useState<Blob>()
   const [busy, setBusy] = useState(false)
   const previewUrl = useObjectUrl(image)
@@ -34,13 +49,13 @@ export function PromptScreen() {
   async function save() {
     if (!canSave || busy) return
     setBusy(true)
-    await repo.addPrompt(kind === 'text' ? { kind, text: text.trim() } : { kind, text: text.trim(), image })
+    await repo.addPrompt({ kind, text: text.trim(), image: kind === 'image' ? image : undefined, noteId })
     navigate('/', { replace: true })
   }
 
   return (
     <AppShell
-      title="New prompt"
+      title={noteId ? 'Prompt from note' : 'New prompt'}
       action={<BackLink />}
       footer={
         <BigButton onClick={save} disabled={!canSave || busy}>

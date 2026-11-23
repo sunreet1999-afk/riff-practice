@@ -23,21 +23,25 @@ src/
   main.tsx         entry
   App.tsx          routes
   index.css        Tailwind import + dark theme tokens
-  components/      small, typed, reusable UI (AppShell, BigButton, ...)
+  components/      small, typed, reusable UI (AppShell, BottomNav, BigButton, ...)
   screens/         one file per route-level screen
-  db/              Dexie schema (db.ts) and data helpers + tests
+  db/              Dexie schema (db.ts), repo.ts data access + tests
+  hooks/           React hooks (useNow, useObjectUrl)
   lib/             pure logic (timer, structures, stats) + tests
   test/setup.ts    loads fake-indexeddb for tests
 ```
 
 ## Routes
 - `/` Home: today's prompt, streak, Start Drill, resume an unfinished session
-- `/prompt` add today's prompt (text situation or photo + optional caption)
+- `/prompt` add today's prompt (text situation or photo + optional caption); `/prompt?note=ID` pre-fills from a journal note
+- `/sessions` finished sessions, newest first; `/sessions/:id` detail (prompt, best lines, all 10 lines)
+- `/journal` quick-add observation notes; "Use as prompt" opens `/prompt?note=ID`
 - `/drill/:id` 5-min drill, 10 slots; earlier lines lock; timer from `session.endsAt` (wall clock)
 - `/judge/:id` pick best 2, optional rewrite with live grapheme count, rate 1–5, save
 
 ## Data (Dexie, `src/db/db.ts`, accessed via `src/db/repo.ts`)
-- `prompts`: `{ id, dateKey, createdAt, kind: 'text'|'image', text, image?: Blob }`
+- `prompts`: `{ id, dateKey, createdAt, kind: 'text'|'image', text, image?: Blob, noteId? }`
+- `notes`: `{ id, createdAt, text, usedAt? }` (`usedAt` set when a prompt is saved from the note)
 - `sessions`: `{ id, promptId, dateKey, status: 'drilling'|'judging'|'done', startedAt, endsAt, finishedAt?, activeSlot, lines[10], picks[] }`
 - Streak = consecutive local days with >= 1 `done` session; a run ending yesterday stays alive until today ends.
 - Multiple drills per day are allowed. Locked lines are persisted as you go (`lockLines`).

@@ -22,12 +22,12 @@ export function HomeScreen() {
   const saved = (location.state as HomeLocationState | null)?.saved === true
   const [starting, setStarting] = useState(false)
 
-  const prompt = useLiveQuery(() => repo.getPromptForDay(), [])
+  const prompt = useLiveQuery(async () => (await repo.getPromptForDay()) ?? false, [], null)
   const streak = useLiveQuery(() => repo.getStreak(), [])
   const unfinished = useLiveQuery(() => repo.getUnfinishedSession(), [])
 
   async function startDrill() {
-    if (!prompt?.id || starting) return
+    if (!prompt || !prompt.id || starting) return
     setStarting(true)
     const id = await repo.startSession(prompt.id)
     navigate(`/drill/${id}`)
@@ -36,6 +36,7 @@ export function HomeScreen() {
   return (
     <AppShell
       title="PunchLab"
+      nav
       action={
         <div className="rounded-xl bg-surface px-3 py-2 text-sm" aria-label={`Streak: ${streak ?? 0} days`}>
           🔥 <span className="font-semibold tabular-nums">{streak ?? 0}</span> day{streak === 1 ? '' : 's'}
@@ -68,7 +69,9 @@ export function HomeScreen() {
             </Link>
           )}
         </div>
-        {prompt === undefined ? (
+        {prompt === null ? (
+          <div className="h-24" aria-busy="true" />
+        ) : prompt === false ? (
           <div className="flex flex-col gap-3">
             <p className="text-lg">No prompt yet today.</p>
             <p className="text-muted">Upload a photo or describe a situation you saw.</p>

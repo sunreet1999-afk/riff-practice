@@ -9,6 +9,8 @@ export interface Prompt {
   /** Situation text, or an optional caption for an image prompt. */
   text: string
   image?: Blob
+  /** Journal note this prompt was created from, if any. */
+  noteId?: number
 }
 
 export type SessionStatus = 'drilling' | 'judging' | 'done'
@@ -40,4 +42,18 @@ export interface Session {
   activeSlot: number
   lines: DrillLine[]
   picks: JudgePick[]
+}
+
+export interface Note {
+  id?: number
+  createdAt: number
+  text: string
+  /** Set when the note has been turned into a drill prompt. */
+  usedAt?: number
+}
+
+/** A finished session joined with its prompt, for list and detail views. */
+export interface SessionWithPrompt {
+  session: Session
+  prompt: Prompt | undefined
 }
