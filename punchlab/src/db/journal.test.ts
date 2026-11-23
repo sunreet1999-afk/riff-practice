@@ -42,18 +42,20 @@ describe('observation journal', () => {
 })
 
 describe('saved sessions list', () => {
-  it('lists only finished sessions, newest first, with their prompts', async () => {
+  it('lists sessions with Stage 1 complete (judged or not), newest first, with their prompts', async () => {
     const p1 = await repo.addPrompt({ kind: 'text', text: 'first prompt' })
     const p2 = await repo.addPrompt({ kind: 'text', text: 'second prompt' })
     const older = await repo.startSession(p1, new Date(2026, 10, 21))
     const newer = await repo.startSession(p2, new Date(2026, 10, 22))
-    await repo.startSession(p2, new Date(2026, 10, 23)) // left unfinished
-    await repo.saveJudgement(older, [])
+    await repo.startSession(p2, new Date(2026, 10, 23)) // still drilling: not listed
+    await repo.finishDrill(older, [{ slot: 0, structure: 'Exaggeration', text: 'a' }]) // Stage 1 only
+    await repo.finishDrill(newer, [{ slot: 0, structure: 'Exaggeration', text: 'a' }])
     await repo.saveJudgement(newer, [{ slot: 0, original: 'a', rewrite: '', rating: 5 }])
 
-    const list = await repo.listDoneSessions()
+    const list = await repo.listCompletedSessions()
     expect(list.map((x) => x.session.id)).toEqual([newer, older])
     expect(list.map((x) => x.prompt?.text)).toEqual(['second prompt', 'first prompt'])
+    expect(list.map((x) => x.session.status)).toEqual(['done', 'drilled'])
     expect(list[0].session.picks[0].rating).toBe(5)
   })
 })

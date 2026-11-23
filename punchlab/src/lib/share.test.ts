@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { shareText } from './share'
+import { copyText, shareText } from './share'
 
 describe('shareText', () => {
   it('uses the Web Share API when available', async () => {
@@ -33,5 +33,15 @@ describe('shareText', () => {
     expect(await shareText('x', {})).toBe('failed')
     const writeText = vi.fn().mockRejectedValue(new Error('denied'))
     expect(await shareText('x', { clipboard: { writeText } })).toBe('failed')
+  })
+})
+
+describe('copyText', () => {
+  it('copies, and reports failure when the clipboard is missing or refuses', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    expect(await copyText('Stage 1 complete', { clipboard: { writeText } })).toBe('copied')
+    expect(writeText).toHaveBeenCalledWith('Stage 1 complete')
+    expect(await copyText('x', {})).toBe('failed')
+    expect(await copyText('x', { clipboard: { writeText: vi.fn().mockRejectedValue(new Error('no')) } })).toBe('failed')
   })
 })

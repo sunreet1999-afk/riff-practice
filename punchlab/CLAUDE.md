@@ -35,10 +35,11 @@ src/
 - `/` Home: today's prompt, streak, Start Drill, resume an unfinished session
 - `/prompt` add today's prompt (text situation or photo + optional caption); `/prompt?note=ID` pre-fills from a journal note
 - `/sessions` finished sessions, newest first; `/sessions/:id` detail (prompt, best lines with Share + Log reaction, all 10 lines)
-- After Judge saves, the app opens `/sessions/:id` so the picks can be shared right away
+- After Judge saves, the app opens `/sessions/:id` so the picks can be shared right away; unpicked lines show under "Other lines"
 - `/journal` quick-add observation notes; "Use as prompt" opens `/prompt?note=ID`
-- `/drill/:id` 5-min drill, 10 slots; earlier lines lock; timer from `session.endsAt` (wall clock)
-- `/judge/:id` pick best 2, optional rewrite with live grapheme count, rate 1–5, save
+- `/drill/:id` 5-min drill, unlimited lines (first 10 follow the structure list, then Free choice); earlier lines lock; timer from `session.endsAt` (wall clock)
+- Stages are independent: finishing the drill = Stage 1 complete (saved, counts for streak) and opens `/sessions/:id`, where "Copy for ChatGPT / Claude" exports it as text
+- `/judge/:id` optional Stage 2, any time later: pick best 2, optional rewrite with live grapheme count, rate 1–5, save
 
 ## Data (Dexie, `src/db/db.ts`, accessed via `src/db/repo.ts`)
 - `prompts`: `{ id, dateKey, createdAt, kind: 'text'|'image', text, image?: Blob, noteId? }`
@@ -52,9 +53,12 @@ src/
 
 ## Sharing
 - `src/lib/share.ts`: Web Share API, falling back to clipboard; closing the share sheet = 'cancelled'. Shares only the line (rewrite if present), never the prompt.
-- `sessions`: `{ id, promptId, dateKey, status: 'drilling'|'judging'|'done', startedAt, endsAt, finishedAt?, activeSlot, lines[10], picks[] }`
-- Streak = consecutive local days with >= 1 `done` session; a run ending yesterday stays alive until today ends.
+- `sessions`: `{ id, promptId, dateKey, status: 'drilling'|'drilled'|'done', startedAt, endsAt, finishedAt?, lines[], picks[] }`
+  - `drilled` = Stage 1 complete; `done` = judged too. `lines` holds locked lines only (empty text = skipped); slot = index.
+  - v5 migration mapped old `judging` → `drilled`, trimmed the old fixed 10 slots and dropped `activeSlot`.
+- Streak = consecutive local days with >= 1 `drilled` or `done` session; a run ending yesterday stays alive until today ends.
 - Multiple drills per day are allowed. Locked lines are persisted as you go (`lockLines`).
+- `src/lib/exportText.ts` `drillToText`: plain-text export (prompt, written lines numbered like the app, picks if judged).
 
 ## Commands
 - `npm run dev`        start dev server

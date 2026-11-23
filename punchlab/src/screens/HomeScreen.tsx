@@ -6,11 +6,6 @@ import { BigButton } from '../components/BigButton'
 import { PromptView } from '../components/PromptView'
 import { WeekStructureCard } from '../components/WeekStructureCard'
 import { repo } from '../db/repo'
-import type { Session } from '../types'
-
-function resumePath(session: Session): string {
-  return session.status === 'drilling' ? `/drill/${session.id}` : `/judge/${session.id}`
-}
 
 export function HomeScreen() {
   const navigate = useNavigate()
@@ -45,10 +40,10 @@ export function HomeScreen() {
     >
       {unfinished && (
         <Link
-          to={resumePath(unfinished)}
+          to={`/drill/${unfinished.id}`}
           className="flex min-h-14 items-center justify-between rounded-2xl border border-accent px-4 text-accent"
         >
-          <span>{unfinished.status === 'drilling' ? 'Unfinished drill' : 'Judge step pending'}</span>
+          <span>Unfinished drill</span>
           <span className="font-semibold">Resume →</span>
         </Link>
       )}
@@ -83,7 +78,7 @@ export function HomeScreen() {
       <WeekStructureCard today={today} />
 
       <p className="px-1 text-sm text-muted">
-        5 minutes · 10 lines · one structure per line. No editing, no ratings until time's up.
+        5 minutes, as many lines as you can. The first 10 follow a structure, then it's free choice. Lines lock as you go.
       </p>
     </AppShell>
   )

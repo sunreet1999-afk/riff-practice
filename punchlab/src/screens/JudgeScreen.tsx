@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
+import { BackLink } from '../components/BackLink'
 import { BigButton } from '../components/BigButton'
 import { CharCount } from '../components/CharCount'
 import { RatingPicker } from '../components/RatingPicker'
@@ -22,7 +23,7 @@ export function JudgeScreen() {
   if (session === null) return null
   if (!session) return <Navigate to="/" replace />
   if (session.status === 'drilling') return <Navigate to={`/drill/${id}`} replace />
-  if (session.status === 'done') return <Navigate to="/" replace />
+  if (session.status === 'done') return <Navigate to={`/sessions/${id}`} replace />
   return <Judge key={id} session={session} />
 }
 
@@ -76,6 +77,7 @@ function Judge({ session }: { session: Session }) {
   return (
     <AppShell
       title="Judge"
+      action={<BackLink to={`/sessions/${session.id}`} />}
       footer={
         <div className="flex flex-col gap-2">
           <p className="text-center text-sm text-muted">{hint}</p>

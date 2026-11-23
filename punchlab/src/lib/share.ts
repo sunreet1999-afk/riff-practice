@@ -32,3 +32,14 @@ export async function shareText(text: string, env: ShareEnv = navigator): Promis
   }
   return 'failed'
 }
+
+/** Copies text to the clipboard. Call it directly from a tap handler. */
+export async function copyText(text: string, env: ShareEnv = navigator): Promise<'copied' | 'failed'> {
+  if (!env.clipboard) return 'failed'
+  try {
+    await env.clipboard.writeText(text)
+    return 'copied'
+  } catch {
+    return 'failed'
+  }
+}

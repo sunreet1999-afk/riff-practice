@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { SLOT_COUNT, STRUCTURES, structureForSlot } from './structures'
+import { STRUCTURED_SLOTS, STRUCTURES, structureForSlot } from './structures'
 
 describe('structure rotation', () => {
-  it('has 10 slots with the spec order', () => {
-    expect(SLOT_COUNT).toBe(10)
-    expect(Array.from({ length: SLOT_COUNT }, (_, i) => structureForSlot(i))).toEqual([
+  it('labels the first 10 slots in the spec order', () => {
+    expect(STRUCTURED_SLOTS).toBe(10)
+    expect(Array.from({ length: STRUCTURED_SLOTS }, (_, i) => structureForSlot(i))).toEqual([
       'Exaggeration',
       'Reversal',
       'Literal interpretation',
@@ -18,14 +18,15 @@ describe('structure rotation', () => {
     ])
   })
 
-  it('uses every structure exactly once in 10 slots', () => {
-    const labels = new Set(Array.from({ length: SLOT_COUNT }, (_, i) => structureForSlot(i)))
+  it('uses every structure exactly once in the first 10 slots', () => {
+    const labels = new Set(Array.from({ length: STRUCTURED_SLOTS }, (_, i) => structureForSlot(i)))
     expect(labels.size).toBe(STRUCTURES.length)
   })
 
-  it('wraps around after the last structure', () => {
-    expect(structureForSlot(10)).toBe('Exaggeration')
-    expect(structureForSlot(13)).toBe('Comparison')
+  it('makes every line after the 10th a Free choice', () => {
+    expect(structureForSlot(10)).toBe('Free choice')
+    expect(structureForSlot(11)).toBe('Free choice')
+    expect(structureForSlot(57)).toBe('Free choice')
     expect(structureForSlot(-1)).toBe('Free choice')
   })
 })

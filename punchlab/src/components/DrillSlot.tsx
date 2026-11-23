@@ -1,58 +1,72 @@
 import { useEffect, useRef } from 'react'
 import type { DrillLine } from '../types'
 
-export type SlotState = 'locked' | 'active' | 'upcoming'
-
-interface DrillSlotProps {
+interface LockedLineProps {
   line: DrillLine
-  state: SlotState
-  draft: string
-  onDraftChange: (text: string) => void
-  /** This slot uses the structure of the week. */
   highlight?: boolean
 }
 
-export function DrillSlot({ line, state, draft, onDraftChange, highlight = false }: DrillSlotProps) {
+function Label({ line, highlight, active }: { line: DrillLine; highlight: boolean; active: boolean }) {
+  return (
+    <span className={`font-semibold ${active ? 'text-accent' : 'text-muted'}`}>
+      {line.slot + 1}. {line.structure}
+      {highlight && <span className="ml-2 rounded-md bg-accent/15 px-1.5 py-0.5 text-xs text-accent">★ This week</span>}
+    </span>
+  )
+}
+
+/** A line that has been locked during the drill (read-only). */
+export function LockedLine({ line, highlight = false }: LockedLineProps) {
+  return (
+    <li className="rounded-2xl border border-line p-3">
+      <div className="mb-2 flex items-center justify-between text-sm">
+        <Label line={line} highlight={highlight} active={false} />
+        <span className="text-muted">🔒</span>
+      </div>
+      <p className={`whitespace-pre-wrap break-words ${line.text ? 'text-ink/80' : 'italic text-muted'}`}>
+        {line.text || 'Skipped'}
+      </p>
+    </li>
+  )
+}
+
+interface ActiveLineProps {
+  line: DrillLine
+  draft: string
+  onDraftChange: (text: string) => void
+  /** Structure of the slot after this one, shown as a hint. */
+  next: string
+  highlight?: boolean
+}
+
+/** The line currently being written. */
+export function ActiveLine({ line, draft, onDraftChange, next, highlight = false }: ActiveLineProps) {
   const ref = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    if (state !== 'active' || !ref.current) return
+    if (!ref.current) return
     ref.current.focus({ preventScroll: true })
     ref.current.scrollIntoView({ block: 'center', behavior: 'smooth' })
-  }, [state])
+  }, [line.slot])
 
   return (
-    <li
-      className={`rounded-2xl border p-3 ${
-        state === 'active' ? 'border-accent bg-surface' : 'border-line'
-      } ${state === 'upcoming' ? 'opacity-40' : ''}`}
-    >
-      <div className="mb-2 flex items-center justify-between text-sm">
-        <span className={`font-semibold ${state === 'active' ? 'text-accent' : 'text-muted'}`}>
-          {line.slot + 1}. {line.structure}
-          {highlight && <span className="ml-2 rounded-md bg-accent/15 px-1.5 py-0.5 text-xs text-accent">★ This week</span>}
-        </span>
-        {state === 'locked' && <span className="text-muted">🔒 Locked</span>}
+    <li className="rounded-2xl border border-accent bg-surface p-3">
+      <div className="mb-2 text-sm">
+        <Label line={line} highlight={highlight} active />
       </div>
-      {state === 'locked' && (
-        <p className={`whitespace-pre-wrap break-words ${line.text ? 'text-ink/80' : 'italic text-muted'}`}>
-          {line.text || 'Skipped'}
-        </p>
-      )}
-      {state === 'active' && (
-        <textarea
-          ref={ref}
-          value={draft}
-          onChange={(e) => onDraftChange(e.target.value)}
-          rows={3}
-          autoCapitalize="sentences"
-          autoComplete="off"
-          enterKeyHint="enter"
-          aria-label={`Line ${line.slot + 1}: ${line.structure}`}
-          placeholder="Type your line (English / Hinglish)…"
-          className="w-full resize-none rounded-xl bg-bg p-3 text-lg text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-accent"
-        />
-      )}
+      <textarea
+        ref={ref}
+        value={draft}
+        onChange={(e) => onDraftChange(e.target.value)}
+        rows={3}
+        autoCapitalize="sentences"
+        autoComplete="off"
+        enterKeyHint="enter"
+        aria-label={`Line ${line.slot + 1}: ${line.structure}`}
+        placeholder="Type your line (English / Hinglish)…"
+        className="w-full resize-none rounded-xl bg-bg p-3 text-lg text-ink outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-accent"
+      />
+      <p className="mt-2 text-sm text-muted">Next: {next}</p>
     </li>
   )
 }

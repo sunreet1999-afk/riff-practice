@@ -18,7 +18,8 @@ function SessionRow({ item }: { item: SessionWithPrompt }) {
         <div className="min-w-0 flex-1">
           <p className="truncate">{title}</p>
           <p className="text-sm text-muted">
-            {formatDay(session.startedAt)} · {written}/10 lines{avg !== null ? ` · ★ ${avg}` : ''}
+            {formatDay(session.startedAt)} · {written} line{written === 1 ? '' : 's'} ·{' '}
+            {session.status === 'done' ? (avg !== null ? `★ ${avg}` : 'Judged') : 'Not judged'}
           </p>
         </div>
       </Link>
@@ -27,12 +28,12 @@ function SessionRow({ item }: { item: SessionWithPrompt }) {
 }
 
 export function SessionsScreen() {
-  const items = useLiveQuery(() => repo.listDoneSessions(), [])
+  const items = useLiveQuery(() => repo.listCompletedSessions(), [])
 
   return (
     <AppShell title="Sessions" nav>
       {items && items.length === 0 && (
-        <p className="rounded-2xl bg-surface p-4 text-muted">No finished sessions yet. Complete a drill and it shows up here.</p>
+        <p className="rounded-2xl bg-surface p-4 text-muted">No sessions yet. Finish a 5-minute drill and it shows up here.</p>
       )}
       <ul className="flex flex-col gap-2">
         {items?.map((item) => (

@@ -13,7 +13,12 @@ export interface Prompt {
   noteId?: number
 }
 
-export type SessionStatus = 'drilling' | 'judging' | 'done'
+/**
+ * drilling: the 5-minute drill is in progress.
+ * drilled:  Stage 1 complete and saved; judging is optional.
+ * done:     Stage 2 (Judge) complete too.
+ */
+export type SessionStatus = 'drilling' | 'drilled' | 'done'
 
 export interface DrillLine {
   slot: number
@@ -38,8 +43,7 @@ export interface Session {
   /** Wall-clock time the drill timer ends; drives the countdown so it survives tab switches. */
   endsAt: number
   finishedAt?: number
-  /** Slot currently being written; every slot before it is locked. Equals SLOT_COUNT when all are locked. */
-  activeSlot: number
+  /** Locked lines in order (empty text = skipped). The line being typed is slot `lines.length`. No upper limit. */
   lines: DrillLine[]
   picks: JudgePick[]
 }
@@ -52,7 +56,7 @@ export interface Note {
   usedAt?: number
 }
 
-/** A finished session joined with its prompt, for list and detail views. */
+/** A completed session (Stage 1 or later) joined with its prompt, for list and detail views. */
 export interface SessionWithPrompt {
   session: Session
   prompt: Prompt | undefined

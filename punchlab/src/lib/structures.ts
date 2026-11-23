@@ -13,10 +13,11 @@ export const STRUCTURES = [
 
 export type Structure = (typeof STRUCTURES)[number]
 
-export const SLOT_COUNT = 10
+/** The first lines of a drill follow the structures in order; after that every line is free. */
+export const STRUCTURED_SLOTS = STRUCTURES.length
 
-/** Structure label shown above a drill slot; rotates through the list and wraps. */
+/** Structure label for a drill slot: the list in order for slots 0–9, then "Free choice". */
 export function structureForSlot(slot: number): Structure {
-  const n = STRUCTURES.length
-  return STRUCTURES[((slot % n) + n) % n]
+  if (slot < 0 || slot >= STRUCTURED_SLOTS) return 'Free choice'
+  return STRUCTURES[slot]
 }
