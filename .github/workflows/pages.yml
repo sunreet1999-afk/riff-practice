@@ -1,7 +1,10 @@
 # Builds PunchLab and publishes GitHub Pages:
 #   /riff-practice/           -> the original Riff Practice index.html (unchanged)
 #   /riff-practice/punchlab/  -> PunchLab PWA
-# Requires Settings -> Pages -> Source: "GitHub Actions".
+# Best with Settings -> Pages -> Source: "GitHub Actions". While the source is still
+# "Deploy from a branch", GitHub also runs its own "pages build and deployment" on each
+# push, which publishes the raw source. The deploy job waits for that run to finish so
+# this built site is always the one published last.
 name: Deploy Pages
 
 on:
@@ -13,6 +16,7 @@ permissions:
   contents: read
   pages: write
   id-token: write
+  actions: read
 
 concurrency:
   group: pages
@@ -52,5 +56,32 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}punchlab/
     steps:
+      - name: Wait for GitHub's branch deployment (if any) to finish first
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          query() {
+            gh api "repos/$REPO/actions/runs?head_sha=$SHA&per_page=20" \
+              --jq '[.workflow_runs[] | select(.name == "pages build and deployment")] | first | .status // "none"'
+          }
+          # The branch build starts within seconds of the push; give it a moment to appear.
+          for i in $(seq 1 6); do
+            status=$(query || echo none)
+            [ "$status" != "none" ] && break
+            sleep 5
+          done
+          if [ "$status" = "none" ]; then
+            echo "No branch deployment for this commit; deploying now."
+            exit 0
+          fi
+          for i in $(seq 1 60); do
+            status=$(query || echo unknown)
+            echo "Branch deployment status: $status"
+            [ "$status" = "completed" ] && exit 0
+            sleep 5
+          done
+          echo "Branch deployment still running after 5 minutes; deploying anyway."
       - id: deployment
         uses: actions/deploy-pages@v4
