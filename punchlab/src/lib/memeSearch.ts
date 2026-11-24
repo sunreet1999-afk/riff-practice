@@ -3,7 +3,6 @@
  * (Firecrawl connector, via the artifact's `mcp` capability), then Claude
  * picks one real result and turns it into a situation to write jokes about.
  */
-import type { IdeaTheme } from './ideaPrompt'
 
 export interface SearchHit {
   title: string
@@ -13,24 +12,18 @@ export interface SearchHit {
   date: string
 }
 
-const QUERY: Record<IdeaTheme, string> = {
-  meme: 'viral meme India',
-  trending: 'viral trend India internet',
-  office: 'viral office meme India',
-  family: 'viral Indian family meme',
-  college: 'viral college students meme India',
-}
-
-/** Input for the Firecrawl `firecrawl_search` tool: last week's news and web results. */
-export function searchInput(theme: IdeaTheme): Record<string, unknown> {
-  return {
-    query: QUERY[theme],
-    objective: 'Find memes trending in India this week to turn into a joke-writing practice prompt.',
-    sources: ['news', 'web'],
+/** Two searches over the last week: Indian dank meme posts, and viral-meme news. */
+export function searchInputs(): Record<string, unknown>[] {
+  const base = {
+    objective: "Find this week's popular desi dank memes to turn into joke-writing practice prompts.",
     tbs: 'qdr:w',
     limit: 8,
     domainTools: false,
   }
+  return [
+    { ...base, query: 'site:reddit.com/r/IndianDankMemes', sources: ['web'] },
+    { ...base, query: 'viral meme India', sources: ['news'] },
+  ]
 }
 
 function str(v: unknown): string {
@@ -59,21 +52,18 @@ export function parseSearchPayload(payload: unknown, max = 12): SearchHit[] {
   return hits
 }
 
-/** Request for Claude: pick ONE specific meme from these real results and build a situation from it. */
-export function buildMemeIdeaRequest(theme: IdeaTheme, hits: SearchHit[], avoid: string[] = []): string {
+/** Request for Claude: pick the funniest real result and build a desi, boys-level situation from it. */
+export function buildMemeIdeaRequest(hits: SearchHit[], avoid: string[] = []): string {
   const lines = [
-    "I'm practising real-time humour. Below are this week's web search results about memes in India.",
-    'Pick ONE specific meme or viral moment from them (not a generic "meme compilation") and turn it into a prompt for me to write jokes about.',
-    theme === 'meme' || theme === 'trending'
-      ? 'Any everyday setting is fine.'
-      : `Set the situation in ${theme === 'office' ? 'office or work life' : theme === 'family' ? 'Indian family life' : 'college or hostel life'}.`,
+    "I'm practising real-time humour. Below are this week's search results: posts from r/IndianDankMemes and news about viral memes in India.",
+    'Pick the ONE result that is the silliest, most relatable desi meme or viral moment, and turn it into a prompt for me to write jokes about.',
     'Rules:',
     '- Do NOT write any jokes or punchlines yourself.',
-    "- Describe the meme in 1-2 sentences (what it shows or says, and why it's going around) so I understand it without seeing it.",
-    '- Then give a new everyday situation (2-3 short sentences, simple Hinglish or English) where that meme fits. Concrete: who, where, one odd detail.',
-    '- Prefer non-political memes. If you use a political one, keep the situation about everyday life, not about politicians or parties.',
-    "- Nothing that targets someone's body, appearance, religion or caste, and no private individuals.",
-    '- Use only what the results say. Do not invent details about the meme.',
+    '- Tone: desi dank, "boys level" humour. Silly, crude, relatable, a bit ghatiya. Skip anything sophisticated, newsy or political.',
+    "- Use only what the results say. A Reddit title alone often doesn't explain the meme: only pick it if the title makes clear what's funny, and never invent what the image shows.",
+    "- Describe the meme or moment in 1-2 sentences (what it is and why it's going around).",
+    '- Then give a new everyday situation (2-3 short sentences, simple Hinglish) where it fits: boys hostel, dosti, family, office. Concrete: who, where, one odd detail.',
+    "- Nothing that targets someone's body, appearance, religion or caste; no real private individuals; nothing sexually explicit.",
   ]
   const recent = avoid.map((a) => a.trim()).filter(Boolean).slice(0, 10)
   if (recent.length > 0) lines.push('Pick something different from these, which I already used or saw:', ...recent.map((a) => `- ${a.slice(0, 200)}`))
@@ -90,6 +80,21 @@ export function buildMemeIdeaRequest(theme: IdeaTheme, hits: SearchHit[], avoid:
     '"source" is the number of the result you used.',
   )
   return lines.join('\n')
+}
+
+/** Merges several search payloads into one de-duplicated list. */
+export function mergeHits(payloads: unknown[], max = 14): SearchHit[] {
+  const seen = new Set<string>()
+  const out: SearchHit[] = []
+  for (const payload of payloads) {
+    for (const hit of parseSearchPayload(payload)) {
+      if (seen.has(hit.url)) continue
+      seen.add(hit.url)
+      out.push(hit)
+      if (out.length >= max) return out
+    }
+  }
+  return out
 }
 
 /** The search result Claude says it used, if the number is valid. */

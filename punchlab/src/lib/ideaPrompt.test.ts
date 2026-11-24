@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest'
 import { buildIdeaRequest, buildSearchRequest, ideaToPromptText, parseIdea } from './ideaPrompt'
 
 describe('buildIdeaRequest', () => {
-  it('asks for a situation (no jokes) as JSON, with the meme described for meme prompts', () => {
-    const text = buildIdeaRequest('meme')
-    expect(text).toContain('a well-known meme format popular in India')
+  it('asks for a desi dank situation (no jokes) as JSON, with a real meme format described', () => {
+    const text = buildIdeaRequest('dank')
+    expect(text).toContain('a well-known desi meme format from Indian dank meme pages')
+    expect(text).toContain('"boys level" humour')
+    expect(text).toContain('Not sophisticated, not news or politics')
+    expect(text).toContain('nothing sexually explicit')
+    expect(text).toContain('Name a meme format you are sure exists')
     expect(text).toContain('Do NOT write any jokes or punchlines yourself.')
-    expect(text).toContain('Describe the meme in 1-2 sentences')
     expect(text).toContain("body, appearance, religion or caste")
     expect(text).toContain('{"title": "3-6 word name", "meme": "description or empty string", "situation": "the situation"}')
   })
@@ -22,16 +25,18 @@ describe('buildIdeaRequest', () => {
 
   it('leaves out the avoid list when there is none', () => {
     expect(buildIdeaRequest('family')).not.toContain('Avoid repeating')
+    expect(buildIdeaRequest('family')).toContain('Only use meme formats you are sure exist.')
   })
 })
 
 describe('buildSearchRequest', () => {
-  it('asks a chat AI to search the web and reply in a pasteable format', () => {
-    const text = buildSearchRequest('meme')
-    expect(text.startsWith('Search the web for a meme that is trending in India this week')).toBe(true)
+  it('asks a chat AI to search the web for a viral desi meme and reply in a pasteable format', () => {
+    const text = buildSearchRequest('dank')
+    expect(text.startsWith('Search the web for a desi meme going viral in India this week (r/IndianDankMemes')).toBe(true)
+    expect(text).toContain('"boys level" humour')
     expect(text).toContain('SITUATION: <2-3 sentences>')
     expect(text).toContain('SOURCE: <link where I can see it>')
-    expect(buildSearchRequest('college')).toContain('something trending in India this week about college or hostel life in India')
+    expect(buildSearchRequest('hostel')).toContain('that fits boys hostel, PG or college dosti life in India')
   })
 })
 

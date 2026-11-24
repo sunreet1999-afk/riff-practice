@@ -2,13 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { repo } from '../db/repo'
 import { PERMANENT_SEARCH_ERRORS, SEARCH_TOOL, getSearchConnector, mcpErrorCode, searchErrorMessage, type SearchConnector } from '../lib/claudeMcp'
 import { PERMANENT_SAMPLE_ERRORS, getSample, sampleErrorCode, type SampleFn } from '../lib/claudeSample'
-import { IDEA_THEMES, buildIdeaRequest, buildSearchRequest, ideaToPromptText, parseIdea, type Idea, type IdeaTheme } from '../lib/ideaPrompt'
-import { buildMemeIdeaRequest, parseSearchPayload, searchInput, sourceHit, type SearchHit } from '../lib/memeSearch'
+import { DEFAULT_IDEA_THEME, IDEA_THEMES, buildIdeaRequest, buildSearchRequest, ideaToPromptText, parseIdea, type Idea, type IdeaTheme } from '../lib/ideaPrompt'
+import { buildMemeIdeaRequest, mergeHits, searchInputs, sourceHit, type SearchHit } from '../lib/memeSearch'
 import { copyText } from '../lib/share'
 import { IdeaCard } from './IdeaCard'
 
 interface IdeaHelperProps {
-  /** Puts the chosen idea into the prompt box (still editable). */
+  /** Puts Claude's idea straight into the prompt box (still editable). */
   onUse: (text: string) => void
 }
 
@@ -32,15 +32,15 @@ function sampleErrorMessage(code: string): string {
  * knowledge; everywhere, copy a web-search request for ChatGPT / Claude chat.
  */
 export function IdeaHelper({ onUse }: IdeaHelperProps) {
-  const [theme, setTheme] = useState<IdeaTheme>('meme')
+  const [theme, setTheme] = useState<IdeaTheme>(DEFAULT_IDEA_THEME)
   const [sample, setSample] = useState<SampleFn | null>(null)
   const [search, setSearch] = useState<SearchConnector | null>(null)
   const [searchNote, setSearchNote] = useState('')
   const [ask, setAsk] = useState<AskState>({ kind: 'idle' })
   const [copied, setCopied] = useState<'idle' | 'copied' | 'failed'>('idle')
   const ctl = useRef<AbortController | null>(null)
-  // Search results per theme, reused by "Another one" so it doesn't spend another search.
-  const hitsByTheme = useRef(new Map<IdeaTheme, SearchHit[]>())
+  // This week's search results, reused by "Another one" so it doesn't spend another search.
+  const trendingHits = useRef<SearchHit[] | null>(null)
   const shown = useRef<string[]>([])
 
   useEffect(() => {
@@ -58,30 +58,31 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
   }, [])
 
   async function findHits(connector: SearchConnector, signal: AbortSignal): Promise<SearchHit[] | null> {
-    const cached = hitsByTheme.current.get(theme)
-    if (cached) return cached
+    if (trendingHits.current) return trendingHits.current
     setAsk({ kind: 'searching' })
-    try {
-      const result = await connector.mcp.callTool(connector.server, SEARCH_TOOL, searchInput(theme), { signal })
-      const hits = parseSearchPayload(result.payload)
-      hitsByTheme.current.set(theme, hits)
-      return hits
-    } catch (err) {
-      const code = mcpErrorCode(err)
-      if (code === 'cancelled') {
-        setAsk({ kind: 'idle' })
-        return null
-      }
-      const message = searchErrorMessage(code, connector.server)
-      if (PERMANENT_SEARCH_ERRORS.has(code)) {
-        setSearch(null)
-        setSearchNote(message)
-        setAsk({ kind: 'idle' })
-      } else {
-        setAsk({ kind: 'error', message })
-      }
+    const results = await Promise.allSettled(
+      searchInputs().map((input) => connector.mcp.callTool(connector.server, SEARCH_TOOL, input, { signal })),
+    )
+    const ok = results.filter((r) => r.status === 'fulfilled').map((r) => r.value.payload)
+    if (ok.length > 0) {
+      trendingHits.current = mergeHits(ok)
+      return trendingHits.current
+    }
+    const first = results.find((r) => r.status === 'rejected')
+    const code = mcpErrorCode(first?.status === 'rejected' ? first.reason : undefined)
+    if (code === 'cancelled') {
+      setAsk({ kind: 'idle' })
       return null
     }
+    const message = searchErrorMessage(code, connector.server)
+    if (PERMANENT_SEARCH_ERRORS.has(code)) {
+      setSearch(null)
+      setSearchNote(message)
+      setAsk({ kind: 'idle' })
+    } else {
+      setAsk({ kind: 'error', message })
+    }
+    return null
   }
 
   async function getIdea(fresh: boolean) {
@@ -93,15 +94,16 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
       const avoid = [...shown.current, ...(await repo.listRecentPromptTexts())]
       let request: string
       let hits: SearchHit[] = []
-      if (search) {
+      const searching = theme === 'trending' && search !== null
+      if (searching) {
         const found = await findHits(search, controller.signal)
         if (!found) return
         if (found.length === 0) {
-          setAsk({ kind: 'error', message: 'No memes found this week for this theme. Try another theme.' })
+          setAsk({ kind: 'error', message: 'No viral memes found this week. Try Desi dank instead.' })
           return
         }
         hits = found
-        request = buildMemeIdeaRequest(theme, hits, avoid)
+        request = buildMemeIdeaRequest(hits, avoid)
       } else {
         request = buildIdeaRequest(theme, avoid)
       }
@@ -114,7 +116,10 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
       const idea = parseIdea(value)
       if (!idea) return setAsk({ kind: 'error', message: sampleErrorMessage('invalid_json') })
       shown.current = [idea.title, idea.situation, ...shown.current].filter(Boolean).slice(0, 8)
-      setAsk({ kind: 'idea', idea, source: search ? sourceHit(value, hits) : null })
+      const source = searching ? sourceHit(value, hits) : null
+      setAsk({ kind: 'idea', idea, source })
+      // Put it straight into the prompt box; the user can edit it or ask for another.
+      onUse(source ? `${ideaToPromptText(idea)}\nSource: ${source.url}` : ideaToPromptText(idea))
     } catch (err) {
       const code = sampleErrorCode(err)
       if (code === 'cancelled') return setAsk({ kind: 'idle' })
@@ -131,23 +136,20 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
     if (ask.kind === 'error') setAsk({ kind: 'idle' })
   }
 
-  function use(idea: Idea, source: SearchHit | null) {
-    onUse(source ? `${ideaToPromptText(idea)}\nSource: ${source.url}` : ideaToPromptText(idea))
-  }
-
   async function copyRequest() {
     setCopied(await copyText(buildSearchRequest(theme)))
   }
 
   const busy = ask.kind === 'searching' || ask.kind === 'thinking'
+  const willSearch = theme === 'trending' && search !== null
   const label =
     ask.kind === 'searching'
       ? "Searching this week's memes…"
       : ask.kind === 'thinking'
-        ? 'Claude is picking one…'
-        : search
-          ? "🔎 Find this week's meme & make a prompt"
-          : '✨ Ask Claude for a prompt'
+        ? 'Claude is cooking…'
+        : willSearch
+          ? "🔎 Find this week's viral meme"
+          : '✨ Get a prompt from Claude'
 
   return (
     <section aria-labelledby="idea-title" className="flex flex-col gap-3 rounded-2xl border border-line p-4">
@@ -174,12 +176,7 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
       {sample && (
         <div className="flex flex-col gap-2">
           {ask.kind === 'idea' ? (
-            <IdeaCard
-              idea={ask.idea}
-              source={ask.source}
-              onAnother={() => void getIdea(true)}
-              onUse={() => use(ask.idea, ask.source)}
-            />
+            <IdeaCard idea={ask.idea} source={ask.source} onAnother={() => void getIdea(true)} />
           ) : (
             <button
               type="button"
@@ -201,9 +198,11 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
             </p>
           )}
           <p className="text-xs text-muted">
-            {search
-              ? `Searches the last week of news and web with your ${search.server} connector (uses its credits), then Claude picks one meme.`
-              : "Claude works from what it knows here; it can't search the web inside the app."}
+            {willSearch
+              ? `Searches r/IndianDankMemes and viral-meme news from the last week with your ${search.server} connector (uses its credits), then Claude picks one.`
+              : theme === 'trending'
+                ? "Can't search here, so Claude goes from what it knows. Connect Firecrawl in claude.ai for this week's memes."
+                : 'Claude picks a desi meme format it knows and makes a situation. Pick Trending for this week’s memes.'}
           </p>
           {searchNote && !search && <p className="text-xs text-muted">{searchNote}</p>}
         </div>
