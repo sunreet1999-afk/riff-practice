@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { BackLink } from '../components/BackLink'
 import { BigButton } from '../components/BigButton'
+import { IdeaHelper } from '../components/IdeaHelper'
 import { repo } from '../db/repo'
 import { useObjectUrl } from '../hooks/useObjectUrl'
 import { prepareImage } from '../lib/image'
@@ -100,6 +101,8 @@ function PromptForm({ initialText = '', noteId }: PromptFormProps) {
           className="w-full resize-none rounded-2xl bg-surface p-4 text-lg outline-none placeholder:text-muted/70 focus:ring-2 focus:ring-accent"
         />
       </label>
+
+      {kind === 'text' && <IdeaHelper onUse={setText} />}
     </AppShell>
   )
 }

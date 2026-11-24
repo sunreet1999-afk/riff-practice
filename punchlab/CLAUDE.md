@@ -43,6 +43,10 @@ src/
 - Joke counts (`src/lib/drillStats.ts`): written lines; split into planned vs extra time via each line's `at` (ms after start). Shown in the drill header, time-up sheet, session detail, Sessions list, Home totals and the AI copy
 - Stages are independent: finishing the drill = Stage 1 complete (saved, counts for streak) and opens `/sessions/:id`
 - "Copy Stage 1 / Stage 2 for ChatGPT / Claude" (`src/lib/exportText.ts`) copies an analysis prompt + the drill + up to 3 earlier drills, and asks for an honest fixed-format progress meter (chat AIs don't remember earlier chats, so history travels in the paste)
+- Prompt screen "Need an idea?" (`src/components/IdeaHelper.tsx`, `src/lib/ideaPrompt.ts`): theme chips (Meme / Trending / Office / Family / College).
+  - "Ask Claude for a prompt": only when running as a Claude Artifact with the `sample` capability (`src/lib/claudeSample.ts`); Claude answers from its own knowledge (no web search), as JSON {title, meme, situation}; "Another one" re-asks with cache off and lists recent prompts to avoid; "Use this" fills the editable text box. Hidden elsewhere and after a permission refusal.
+  - "Copy request for ChatGPT / Claude (web search)": works everywhere; asks a chat AI to search what's trending and reply as SITUATION / MEME / SOURCE.
+  - Publishing the artifact must declare `capabilities: {sample: {}}`.
 - `/judge/:id` optional Stage 2, any time later: pick best 2, optional rewrite with live grapheme count, rate 1–5, save
 
 ## Data (Dexie, `src/db/db.ts`, accessed via `src/db/repo.ts`)

@@ -110,6 +110,12 @@ export function createRepo(db: PunchLabDB = defaultDb) {
       return sessions.map((session) => ({ session, prompt: byId.get(session.promptId) }))
     },
 
+    /** Text of the most recent prompts, newest first (so AI ideas don't repeat them). */
+    async listRecentPromptTexts(limit = 10): Promise<string[]> {
+      const rows = await db.prompts.orderBy('createdAt').reverse().limit(limit).toArray()
+      return rows.map((p) => p.text).filter(Boolean)
+    },
+
     async addNote(text: string, now: Date = new Date()): Promise<number> {
       const note: Note = { text, createdAt: now.getTime() }
       return db.notes.add(note) as Promise<number>
