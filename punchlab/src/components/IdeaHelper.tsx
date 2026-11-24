@@ -1,8 +1,10 @@
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useEffect, useRef, useState } from 'react'
 import { repo } from '../db/repo'
 import { PERMANENT_SEARCH_ERRORS, SEARCH_TOOL, getSearchConnector, mcpErrorCode, searchErrorMessage, type SearchConnector } from '../lib/claudeMcp'
 import { PERMANENT_SAMPLE_ERRORS, getSample, sampleErrorCode, type SampleFn } from '../lib/claudeSample'
-import { DEFAULT_IDEA_THEME, IDEA_THEMES, buildIdeaRequest, buildSearchRequest, ideaToPromptText, parseIdea, type Idea, type IdeaTheme } from '../lib/ideaPrompt'
+import { suggestDifficulty } from '../lib/difficulty'
+import { DEFAULT_DIFFICULTY, DEFAULT_IDEA_THEME, DIFFICULTIES, IDEA_THEMES, buildIdeaRequest, buildSearchRequest, ideaToPromptText, parseIdea, type Difficulty, type Idea, type IdeaTheme } from '../lib/ideaPrompt'
 import { buildMemeIdeaRequest, mergeHits, searchInputs, sourceHit, type SearchHit } from '../lib/memeSearch'
 import { copyText } from '../lib/share'
 import { IdeaCard } from './IdeaCard'
@@ -33,6 +35,13 @@ function sampleErrorMessage(code: string): string {
  */
 export function IdeaHelper({ onUse }: IdeaHelperProps) {
   const [theme, setTheme] = useState<IdeaTheme>(DEFAULT_IDEA_THEME)
+  const [pickedDifficulty, setPickedDifficulty] = useState<Difficulty>()
+  // Suggest a level from recent drills: writing fast → tougher, stalling → easier.
+  const suggestion = useLiveQuery(async () => {
+    const recent = await repo.listCompletedSessions()
+    return suggestDifficulty(recent.map((x) => x.session))
+  }, [])
+  const difficulty = pickedDifficulty ?? suggestion?.difficulty ?? DEFAULT_DIFFICULTY
   const [sample, setSample] = useState<SampleFn | null>(null)
   const [search, setSearch] = useState<SearchConnector | null>(null)
   const [searchNote, setSearchNote] = useState('')
@@ -103,9 +112,9 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
           return
         }
         hits = found
-        request = buildMemeIdeaRequest(hits, avoid)
+        request = buildMemeIdeaRequest(hits, avoid, difficulty)
       } else {
-        request = buildIdeaRequest(theme, avoid)
+        request = buildIdeaRequest(theme, avoid, difficulty)
       }
       setAsk({ kind: 'thinking' })
       // "Another one" must really ask again, so it skips the answer cache.
@@ -137,7 +146,7 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
   }
 
   async function copyRequest() {
-    setCopied(await copyText(buildSearchRequest(theme)))
+    setCopied(await copyText(buildSearchRequest(theme, difficulty)))
   }
 
   const busy = ask.kind === 'searching' || ask.kind === 'thinking'
@@ -171,6 +180,32 @@ export function IdeaHelper({ onUse }: IdeaHelperProps) {
             {t.label}
           </button>
         ))}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div role="radiogroup" aria-label="Difficulty" className="grid grid-cols-3 gap-2">
+          {DIFFICULTIES.map((d) => (
+            <button
+              key={d.difficulty}
+              type="button"
+              role="radio"
+              aria-checked={difficulty === d.difficulty}
+              onClick={() => setPickedDifficulty(d.difficulty)}
+              className={`min-h-11 rounded-xl text-sm font-semibold ${
+                difficulty === d.difficulty ? 'bg-ink text-bg' : 'border border-line text-ink active:bg-surface'
+              }`}
+            >
+              {d.label}
+              {suggestion?.difficulty === d.difficulty && ' ★'}
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted">
+          {DIFFICULTIES.find((d) => d.difficulty === difficulty)?.hint}.{' '}
+          {suggestion
+            ? `★ Suggested: you wrote ${suggestion.pace} jokes/min in your last ${suggestion.drills === 1 ? 'drill' : `${suggestion.drills} drills`}.`
+            : 'Do a timed drill and the app will suggest a level.'}
+        </p>
       </div>
 
       {sample && (

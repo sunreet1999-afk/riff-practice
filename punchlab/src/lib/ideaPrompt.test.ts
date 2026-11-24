@@ -65,3 +65,18 @@ describe('ideaToPromptText', () => {
     expect(ideaToPromptText({ title: 't', meme: '', situation: 'Biryani ya diet?' })).toBe('Biryani ya diet?')
   })
 })
+
+describe('joke-ability and difficulty', () => {
+  it('always asks for a joke-rich situation with several angles', () => {
+    const text = buildIdeaRequest('hostel')
+    expect(text).toContain('Make it joke-rich: build in a contradiction')
+    expect(text).toContain('several different angles to joke from')
+    expect(text).toContain('Difficulty MEDIUM') // default
+  })
+
+  it('changes the ask with the difficulty, also for the chat request', () => {
+    expect(buildIdeaRequest('dank', [], 'easy')).toContain('Difficulty EASY')
+    expect(buildIdeaRequest('dank', [], 'tough')).toContain('Difficulty TOUGH: an ordinary, low-drama moment')
+    expect(buildSearchRequest('dank', 'tough')).toContain('Difficulty TOUGH')
+  })
+})

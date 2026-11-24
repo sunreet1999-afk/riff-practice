@@ -1,3 +1,4 @@
+import { DEFAULT_DIFFICULTY, jokeabilityRules, type Difficulty } from './ideaPrompt'
 /**
  * Finding this week's memes for a drill prompt: the page searches the web
  * (Firecrawl connector, via the artifact's `mcp` capability), then Claude
@@ -53,7 +54,7 @@ export function parseSearchPayload(payload: unknown, max = 12): SearchHit[] {
 }
 
 /** Request for Claude: pick the funniest real result and build a desi, boys-level situation from it. */
-export function buildMemeIdeaRequest(hits: SearchHit[], avoid: string[] = []): string {
+export function buildMemeIdeaRequest(hits: SearchHit[], avoid: string[] = [], difficulty: Difficulty = DEFAULT_DIFFICULTY): string {
   const lines = [
     "I'm practising real-time humour. Below are this week's search results: posts from r/IndianDankMemes and news about viral memes in India.",
     'Pick the ONE result that is the silliest, most relatable desi meme or viral moment, and turn it into a prompt for me to write jokes about.',
@@ -64,6 +65,7 @@ export function buildMemeIdeaRequest(hits: SearchHit[], avoid: string[] = []): s
     "- Describe the meme or moment in 1-2 sentences (what it is and why it's going around).",
     '- Then give a new everyday situation (2-3 short sentences, simple Hinglish) where it fits: boys hostel, dosti, family, office. Concrete: who, where, one odd detail.',
     "- Nothing that targets someone's body, appearance, religion or caste; no real private individuals; nothing sexually explicit.",
+    ...jokeabilityRules(difficulty).map((r) => `- ${r}`),
   ]
   const recent = avoid.map((a) => a.trim()).filter(Boolean).slice(0, 10)
   if (recent.length > 0) lines.push('Pick something different from these, which I already used or saw:', ...recent.map((a) => `- ${a.slice(0, 200)}`))
