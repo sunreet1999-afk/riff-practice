@@ -7,9 +7,7 @@ import { PromptView } from '../components/PromptView'
 import { repo } from '../db/repo'
 import { useConfirmTap } from '../hooks/useConfirmTap'
 import { useNow } from '../hooks/useNow'
-import { structureForSlot } from '../lib/structures'
-import { formatClock, isExpired, remainingMs } from '../lib/timer'
-import { structureOfWeek } from '../lib/week'
+import { elapsedMs, formatClock, isExpired, remainingMs } from '../lib/timer'
 import type { DrillLine, Session } from '../types'
 
 export function DrillScreen() {
@@ -23,7 +21,7 @@ export function DrillScreen() {
 }
 
 function newLine(slot: number, text: string): DrillLine {
-  return { slot, structure: structureForSlot(slot), text }
+  return { slot, structure: '', text }
 }
 
 function Drill({ session }: { session: Session }) {
@@ -36,8 +34,10 @@ function Drill({ session }: { session: Session }) {
   const confirmFinish = useConfirmTap()
 
   const now = useNow(250)
-  const left = remainingMs(session.endsAt, now)
-  const lowTime = left <= 30_000
+  const unlimited = session.endsAt === null
+  // Timed drills count down; unlimited drills count up.
+  const clock = session.endsAt === null ? elapsedMs(session.startedAt, now) : remainingMs(session.endsAt, now)
+  const lowTime = !unlimited && clock <= 30_000
   const activeSlot = lines.length
   const written = lines.filter((l) => l.text).length
 
@@ -62,7 +62,6 @@ function Drill({ session }: { session: Session }) {
     await repo.lockLines(sessionId, next)
   }
 
-  const weekStructure = structureOfWeek(new Date(session.startedAt))
   const active = newLine(activeSlot, draft)
 
   return (
@@ -74,10 +73,11 @@ function Drill({ session }: { session: Session }) {
           </span>
           <span
             role="timer"
-            aria-label={`Time left ${formatClock(left)}`}
-            className={`text-3xl font-bold tabular-nums ${lowTime ? 'text-red-400' : 'text-ink'}`}
+            aria-label={unlimited ? `No time limit, ${formatClock(clock)} so far` : `Time left ${formatClock(clock)}`}
+            className={`flex items-baseline gap-2 text-3xl font-bold tabular-nums ${lowTime ? 'text-red-400' : 'text-ink'}`}
           >
-            {formatClock(left)}
+            {unlimited && <span className="text-sm font-normal text-muted">∞</span>}
+            {formatClock(clock)}
           </span>
         </div>
         {prompt && (
@@ -89,15 +89,9 @@ function Drill({ session }: { session: Session }) {
 
       <ol className="flex flex-1 flex-col gap-3 px-4 py-4">
         {lines.map((line) => (
-          <LockedLine key={line.slot} line={line} highlight={line.structure === weekStructure} />
+          <LockedLine key={line.slot} line={line} />
         ))}
-        <ActiveLine
-          line={active}
-          draft={draft}
-          onDraftChange={setDraft}
-          next={structureForSlot(activeSlot + 1)}
-          highlight={active.structure === weekStructure}
-        />
+        <ActiveLine line={active} draft={draft} onDraftChange={setDraft} />
       </ol>
 
       <footer className="sticky bottom-0 flex gap-2 border-t border-line bg-bg/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur">

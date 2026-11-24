@@ -67,7 +67,7 @@ export function PickCard({ sessionId, pick, structure, reactions }: PickCardProp
     <li className="flex flex-col gap-2 rounded-2xl border border-accent bg-surface p-3">
       <div className="flex items-center justify-between text-sm">
         <span className="font-semibold text-accent">
-          ★ {pick.slot + 1}. {structure}
+          ★ {structure ? `${pick.slot + 1}. ${structure}` : `Line ${pick.slot + 1}`}
         </span>
         <span aria-label={`Rated ${pick.rating} of 5`} className="font-semibold">
           {pick.rating}/5

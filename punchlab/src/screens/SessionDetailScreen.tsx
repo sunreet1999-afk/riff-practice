@@ -7,9 +7,10 @@ import { PickCard } from '../components/PickCard'
 import { PromptView } from '../components/PromptView'
 import { Toast } from '../components/Toast'
 import { repo } from '../db/repo'
-import { drillToText } from '../lib/exportText'
+import { lineLabel } from '../lib/lineLabel'
+import { stage1ForAI, stage2ForAI } from '../lib/exportText'
 import { formatDay, formatDuration, formatTime } from '../lib/format'
-import type { DrillLine, Reaction, Session } from '../types'
+import type { DrillLine, Reaction, Session, SessionWithPrompt } from '../types'
 
 interface DetailLocationState {
   drillSaved?: boolean
@@ -32,7 +33,7 @@ function LineList({ lines, pickedSlots }: { lines: DrillLine[]; pickedSlots?: Se
         <li key={line.slot} className="rounded-2xl border border-line p-3">
           <p className="text-sm font-semibold text-muted">
             {pickedSlots?.has(line.slot) ? '★ ' : ''}
-            {line.slot + 1}. {line.structure}
+            {lineLabel(line)}
           </p>
           <p className="mt-1 whitespace-pre-wrap break-words">{line.text}</p>
         </li>
@@ -44,6 +45,8 @@ function LineList({ lines, pickedSlots }: { lines: DrillLine[]; pickedSlots?: Se
 function Detail({ session }: { session: Session }) {
   const prompt = useLiveQuery(() => repo.getPrompt(session.promptId), [session.promptId])
   const reactions = useLiveQuery(() => repo.listReactions(session.id!), [session.id], [] as Reaction[])
+  // Earlier drills go into the AI copy so it can rate progress honestly.
+  const previous = useLiveQuery(() => repo.listPreviousSessions(session.startedAt), [session.startedAt], [] as SessionWithPrompt[])
   const state = useLocation().state as DetailLocationState | null
 
   const judged = session.status === 'done'
@@ -75,11 +78,14 @@ function Detail({ session }: { session: Session }) {
           <h2 className="font-semibold">Stage 1 · Drill</h2>
           <span className="text-sm text-accent">✓ Saved</span>
         </div>
-        <CopyForAI text={drillToText(session, prompt)} />
+        <CopyForAI label="Copy Stage 1 for ChatGPT / Claude" text={stage1ForAI(session, prompt, previous)} />
         <div className="flex items-center justify-between pt-2">
           <h2 className="font-semibold">Stage 2 · Judge</h2>
           <span className={`text-sm ${judged ? 'text-accent' : 'text-muted'}`}>{judged ? '✓ Done' : 'Optional'}</span>
         </div>
+        {judged && (
+          <CopyForAI label="Copy Stage 2 for ChatGPT / Claude" text={stage2ForAI(session, prompt, reactions, previous)} />
+        )}
         {!judged &&
           (written.length > 0 ? (
             <Link

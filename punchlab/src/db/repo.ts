@@ -1,5 +1,5 @@
 import { computeStreak, localDateKey } from '../lib/dates'
-import { drillEndsAt } from '../lib/timer'
+import { DEFAULT_DRILL_LENGTH, drillEndsAt, parseDrillLength, type DrillLength } from '../lib/timer'
 import type { DrillLine, JudgePick, Note, Prompt, PromptKind, Reaction, Session, SessionWithPrompt } from '../types'
 import { db as defaultDb, type PunchLabDB } from './db'
 
@@ -31,13 +31,13 @@ export function createRepo(db: PunchLabDB = defaultDb) {
       return rows.at(-1)
     },
 
-    async startSession(promptId: number, now: Date = new Date()): Promise<number> {
+    async startSession(promptId: number, now: Date = new Date(), length: DrillLength = DEFAULT_DRILL_LENGTH): Promise<number> {
       const session: Session = {
         promptId,
         dateKey: localDateKey(now),
         status: 'drilling',
         startedAt: now.getTime(),
-        endsAt: drillEndsAt(now.getTime()),
+        endsAt: drillEndsAt(now.getTime(), length),
         lines: [],
         picks: [],
       }
@@ -66,6 +66,12 @@ export function createRepo(db: PunchLabDB = defaultDb) {
     async getUnfinishedSession(): Promise<Session | undefined> {
       const rows = await db.sessions.where('status').equals('drilling').sortBy('startedAt')
       return rows.at(-1)
+    },
+
+    /** Up to `limit` completed sessions that started before `before`, newest first (for progress comparisons). */
+    async listPreviousSessions(before: number, limit = 3): Promise<SessionWithPrompt[]> {
+      const all = await this.listCompletedSessions()
+      return all.filter((x) => x.session.startedAt < before).slice(0, limit)
     },
 
     /** Sessions with Stage 1 complete (judged or not), newest first, each with its prompt. */
@@ -105,6 +111,15 @@ export function createRepo(db: PunchLabDB = defaultDb) {
 
     async deleteReaction(id: number): Promise<void> {
       await db.reactions.delete(id)
+    },
+
+    /** Last drill length the user picked; defaults to 5 minutes. */
+    async getDrillLength(): Promise<DrillLength> {
+      return parseDrillLength((await db.settings.get('drillLength'))?.value)
+    },
+
+    async setDrillLength(length: DrillLength): Promise<void> {
+      await db.settings.put({ key: 'drillLength', value: String(length) })
     },
 
     async getStreak(today: Date = new Date()): Promise<number> {

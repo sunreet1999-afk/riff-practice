@@ -3,9 +3,11 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { BigButton } from '../components/BigButton'
+import { DurationPicker } from '../components/DurationPicker'
 import { PromptView } from '../components/PromptView'
 import { WeekStructureCard } from '../components/WeekStructureCard'
 import { repo } from '../db/repo'
+import type { DrillLength } from '../lib/timer'
 
 export function HomeScreen() {
   const navigate = useNavigate()
@@ -15,11 +17,19 @@ export function HomeScreen() {
   const prompt = useLiveQuery(async () => (await repo.getPromptForDay()) ?? false, [], null)
   const streak = useLiveQuery(() => repo.getStreak(), [])
   const unfinished = useLiveQuery(() => repo.getUnfinishedSession(), [])
+  const savedLength = useLiveQuery(() => repo.getDrillLength(), [])
+  const [picked, setPicked] = useState<DrillLength>()
+  const length = picked ?? savedLength ?? 5
+
+  function chooseLength(l: DrillLength) {
+    setPicked(l)
+    void repo.setDrillLength(l)
+  }
 
   async function startDrill() {
     if (!prompt || !prompt.id || starting) return
     setStarting(true)
-    const id = await repo.startSession(prompt.id)
+    const id = await repo.startSession(prompt.id, new Date(), length)
     navigate(`/drill/${id}`)
   }
 
@@ -33,9 +43,12 @@ export function HomeScreen() {
         </div>
       }
       footer={
-        <BigButton onClick={startDrill} disabled={!prompt || starting}>
-          Start Drill
-        </BigButton>
+        <div className="flex flex-col gap-2">
+          <DurationPicker value={length} onChange={chooseLength} />
+          <BigButton onClick={startDrill} disabled={!prompt || starting}>
+            {length === 'unlimited' ? 'Start Drill · no limit' : `Start ${length}-min Drill`}
+          </BigButton>
+        </div>
       }
     >
       {unfinished && (
@@ -78,7 +91,7 @@ export function HomeScreen() {
       <WeekStructureCard today={today} />
 
       <p className="px-1 text-sm text-muted">
-        5 minutes, as many lines as you can. The first 10 follow a structure, then it's free choice. Lines lock as you go.
+        Write as many lines as you can before time runs out, or pick ∞ and finish when you're done. Lines lock as you go.
       </p>
     </AppShell>
   )

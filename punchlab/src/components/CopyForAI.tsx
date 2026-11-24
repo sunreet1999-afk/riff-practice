@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { copyText } from '../lib/share'
 
 /**
- * Copies a drill as plain text for ChatGPT, Claude or notes.
+ * Copies a stage's analysis prompt + data for ChatGPT or Claude.
  * If the clipboard is blocked, shows the text so it can be selected by hand.
  */
-export function CopyForAI({ text }: { text: string }) {
+export function CopyForAI({ text, label }: { text: string; label: string }) {
   const [state, setState] = useState<'idle' | 'copied' | 'failed'>('idle')
 
   async function copy() {
@@ -19,9 +19,9 @@ export function CopyForAI({ text }: { text: string }) {
         onClick={copy}
         className="min-h-14 w-full rounded-2xl border border-line text-lg font-semibold active:bg-line"
       >
-        {state === 'copied' ? '✓ Copied' : 'Copy for ChatGPT / Claude'}
+        {state === 'copied' ? '✓ Copied' : label}
       </button>
-      {state === 'copied' && <p role="status" className="text-sm text-muted">Copied. Paste it into ChatGPT, Claude or your notes.</p>}
+      {state === 'copied' && <p role="status" className="text-sm text-muted">Copied with an analysis prompt, up to 3 earlier drills and a progress meter. Paste it into ChatGPT or Claude.</p>}
       {state === 'failed' && (
         <label className="flex flex-col gap-2">
           <span role="status" className="text-sm text-muted">

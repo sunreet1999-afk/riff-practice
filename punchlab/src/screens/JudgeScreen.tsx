@@ -7,6 +7,7 @@ import { BigButton } from '../components/BigButton'
 import { CharCount } from '../components/CharCount'
 import { RatingPicker } from '../components/RatingPicker'
 import { repo } from '../db/repo'
+import { lineLabel } from '../lib/lineLabel'
 import type { DrillLine, JudgePick, Session } from '../types'
 
 const MAX_PICKS = 2
@@ -103,7 +104,7 @@ function Judge({ session }: { session: Session }) {
               >
                 <span className={`text-sm font-semibold ${selected ? 'text-accent' : 'text-muted'}`}>
                   {selected ? '★ ' : ''}
-                  {line.slot + 1}. {line.structure}
+                  {lineLabel(line)}
                 </span>
                 <span className="whitespace-pre-wrap break-words text-lg">{line.text}</span>
               </button>

@@ -22,6 +22,7 @@ export type SessionStatus = 'drilling' | 'drilled' | 'done'
 
 export interface DrillLine {
   slot: number
+  /** Structure label from older drills; new drills leave it empty (no labels while writing). */
   structure: string
   text: string
 }
@@ -40,8 +41,8 @@ export interface Session {
   dateKey: string
   status: SessionStatus
   startedAt: number
-  /** Wall-clock time the drill timer ends; drives the countdown so it survives tab switches. */
-  endsAt: number
+  /** Wall-clock time the drill timer ends (drives the countdown so it survives tab switches); null = no time limit. */
+  endsAt: number | null
   finishedAt?: number
   /** Locked lines in order (empty text = skipped). The line being typed is slot `lines.length`. No upper limit. */
   lines: DrillLine[]
