@@ -46,7 +46,8 @@ src/
 - Prompt screen "Need an idea?" (`src/components/IdeaHelper.tsx`, `src/lib/ideaPrompt.ts`): theme chips (Meme / Trending / Office / Family / College).
   - "Ask Claude for a prompt": only when running as a Claude Artifact with the `sample` capability (`src/lib/claudeSample.ts`); Claude answers from its own knowledge (no web search), as JSON {title, meme, situation}; "Another one" re-asks with cache off and lists recent prompts to avoid; "Use this" fills the editable text box. Hidden elsewhere and after a permission refusal.
   - "Copy request for ChatGPT / Claude (web search)": works everywhere; asks a chat AI to search what's trending and reply as SITUATION / MEME / SOURCE.
-  - Publishing the artifact must declare `capabilities: {sample: {}}`.
+  - In the artifact, when the viewer has the Firecrawl connector (`src/lib/claudeMcp.ts`, `mcp` capability), the main button becomes "Find this week's meme": `firecrawl_search` (news + web, `tbs: qdr:w`) → Claude picks ONE real result (`src/lib/memeSearch.ts`) → idea with a "See the meme ↗" link. "Another one" reuses that theme's results (no new search); a new theme searches again. Connector problems fall back to Claude-only ideas with a fix message.
+  - Publishing the artifact must declare `capabilities: {sample: {}, mcp: {servers: [{server: "firecrawl", tools: ["firecrawl_search"]}]}}`.
 - `/judge/:id` optional Stage 2, any time later: pick best 2, optional rewrite with live grapheme count, rate 1–5, save
 
 ## Data (Dexie, `src/db/db.ts`, accessed via `src/db/repo.ts`)
