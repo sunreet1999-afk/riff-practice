@@ -17,6 +17,7 @@ export function HomeScreen() {
   const prompt = useLiveQuery(async () => (await repo.getPromptForDay()) ?? false, [], null)
   const streak = useLiveQuery(() => repo.getStreak(), [])
   const unfinished = useLiveQuery(() => repo.getUnfinishedSession(), [])
+  const totals = useLiveQuery(() => repo.getJokeTotals(), [])
   const savedLength = useLiveQuery(() => repo.getDrillLength(), [])
   const [picked, setPicked] = useState<DrillLength>()
   const length = picked ?? savedLength ?? 5
@@ -87,6 +88,21 @@ export function HomeScreen() {
           <PromptView prompt={prompt} />
         )}
       </section>
+
+      {totals && totals.drills > 0 && (
+        <section aria-label="Jokes written" className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-surface p-3">
+            <p className="text-2xl font-bold text-accent tabular-nums">{totals.today}</p>
+            <p className="text-sm text-muted">jokes today</p>
+          </div>
+          <div className="rounded-2xl bg-surface p-3">
+            <p className="text-2xl font-bold tabular-nums">{totals.total}</p>
+            <p className="text-sm text-muted">
+              jokes in {totals.drills} drill{totals.drills === 1 ? '' : 's'}
+            </p>
+          </div>
+        </section>
+      )}
 
       <WeekStructureCard today={today} />
 

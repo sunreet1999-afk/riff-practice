@@ -21,13 +21,25 @@ export function drillEndsAt(startedAt: number, length: DrillLength = DEFAULT_DRI
   return length === 'unlimited' ? null : startedAt + length * 60_000
 }
 
-/** Human description of a session's drill length, e.g. "5 min" or "no time limit, took 3:12". */
-export function describeDrillLength(session: { startedAt: number; endsAt: number | null; finishedAt?: number }): string {
-  if (session.endsAt === null) {
-    const took = session.finishedAt ? `, took ${formatDuration(session.finishedAt - session.startedAt)}` : ''
-    return `no time limit${took}`
-  }
-  return `${Math.round((session.endsAt - session.startedAt) / 60_000)} min`
+interface LengthInfo {
+  startedAt: number
+  endsAt: number | null
+  plannedEndsAt?: number | null
+  finishedAt?: number
+}
+
+/**
+ * Human description of a drill's length, e.g. "5 min", "no time limit, took 3:12",
+ * "5 min planned, extended, took 7:30 in total" or "5 min planned, then no limit, took 9:12 in total".
+ */
+export function describeDrillLength(session: LengthInfo): string {
+  const took = session.finishedAt ? formatDuration(session.finishedAt - session.startedAt) : null
+  const planned = session.plannedEndsAt !== undefined ? session.plannedEndsAt : session.endsAt
+  if (planned === null) return `no time limit${took ? `, took ${took}` : ''}`
+  const plannedMin = `${Math.round((planned - session.startedAt) / 60_000)} min`
+  if (session.plannedEndsAt === undefined || session.plannedEndsAt === session.endsAt) return plannedMin
+  const how = session.endsAt === null ? 'then no limit' : 'extended'
+  return `${plannedMin} planned, ${how}${took ? `, took ${took} in total` : ''}`
 }
 
 /** Milliseconds left, never negative. Based on wall clock so backgrounding the tab can't pause it. */

@@ -66,6 +66,35 @@ describe('session save/load', () => {
     expect(await repo.getDrillLength()).toBe(5)
   })
 
+  it('extends a drill past its time, keeping the original end, and only while drilling', async () => {
+    const t0 = new Date(2026, 10, 24, 9)
+    const p = await repo.addPrompt({ kind: 'text', text: 'x' }, t0)
+    const id = await repo.startSession(p, t0, 5)
+    const lines = [{ slot: 0, structure: '', text: 'pehla', at: 100_000 }]
+
+    await repo.extendDrill(id, 2, lines, new Date(t0.getTime() + 310_000))
+    let s = await repo.getSession(id)
+    expect(s).toMatchObject({ plannedEndsAt: t0.getTime() + 300_000, endsAt: t0.getTime() + 430_000, lines })
+
+    await repo.extendDrill(id, 'unlimited', lines, new Date(t0.getTime() + 440_000))
+    s = await repo.getSession(id)
+    expect(s).toMatchObject({ plannedEndsAt: t0.getTime() + 300_000, endsAt: null }) // original end kept
+
+    await repo.finishDrill(id, lines)
+    await repo.extendDrill(id, 5, lines)
+    expect((await repo.getSession(id))?.endsAt).toBeNull() // finished drills can't be extended
+  })
+
+  it('totals jokes today and all time across completed drills', async () => {
+    const p = await repo.addPrompt({ kind: 'text', text: 'x' })
+    const y = await repo.startSession(p, new Date(2026, 10, 23, 9))
+    await repo.finishDrill(y, linesOf(['a', '', 'b']))
+    const t = await repo.startSession(p, new Date(2026, 10, 24, 9))
+    await repo.finishDrill(t, linesOf(['c', 'd', 'e']))
+    await repo.startSession(p, new Date(2026, 10, 24, 11)) // unfinished: not counted
+    expect(await repo.getJokeTotals(new Date(2026, 10, 24, 20))).toEqual({ today: 3, total: 5, drills: 2 })
+  })
+
   it('lists up to 3 earlier completed sessions for progress comparison', async () => {
     const p = await repo.addPrompt({ kind: 'text', text: 'x' })
     const ids: number[] = []

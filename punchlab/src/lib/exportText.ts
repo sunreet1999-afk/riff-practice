@@ -1,3 +1,4 @@
+import { countJokes, jokesPerMinute, plannedEnd, wasExtended } from './drillStats'
 import { formatDay } from './format'
 import { reactionMeta } from './reactions'
 import { describeDrillLength } from './timer'
@@ -28,11 +29,24 @@ function plural(n: number, word: string): string {
   return `${n} ${word}${n === 1 ? '' : 's'}`
 }
 
+/** "12 jokes (9 in the planned 5 min, 3 in extra time), 1.6 per minute" */
+function jokeSummary(session: Session): string {
+  const c = countJokes(session)
+  let out = plural(c.total, 'joke')
+  const end = plannedEnd(session)
+  if (wasExtended(session) && end !== null) {
+    out += ` (${c.planned} in the planned ${Math.round((end - session.startedAt) / 60_000)} min, ${c.extra} in extra time)`
+  }
+  const pace = jokesPerMinute(session)
+  return pace === null ? out : `${out}, ${pace} per minute`
+}
+
 function drillBlock(session: Session, prompt: Prompt | undefined): string[] {
   const written = session.lines.filter((l) => l.text)
   const out = [
     promptLine(prompt),
-    `Drill: ${describeDrillLength(session)}, ${plural(written.length, 'line')} written (skipped lines left out)`,
+    `Drill: ${describeDrillLength(session)}`,
+    `Jokes written: ${jokeSummary(session)} (skipped lines left out)`,
     '',
     'Lines:',
   ]
@@ -56,7 +70,7 @@ function previousBlock(previous: SessionWithPrompt[], withPicks: boolean): strin
   previous.forEach(({ session, prompt }, i) => {
     const written = session.lines.filter((l) => l.text)
     out.push('')
-    out.push(`[Earlier drill ${i + 1}] ${formatDay(session.startedAt)}, ${describeDrillLength(session)}, ${plural(written.length, 'line')}`)
+    out.push(`[Earlier drill ${i + 1}] ${formatDay(session.startedAt)}, ${describeDrillLength(session)}, ${jokeSummary(session)}`)
     out.push(promptLine(prompt))
     for (const l of written.slice(0, MAX_PREVIOUS_LINES)) out.push(`${l.slot + 1}. ${l.text}`)
     if (written.length > MAX_PREVIOUS_LINES) out.push(`(+${written.length - MAX_PREVIOUS_LINES} more lines not shown)`)
@@ -90,7 +104,7 @@ export function stage1ForAI(session: Session, prompt: Prompt | undefined, previo
     '3. For those 2, suggest a tighter version (shorter, with the punch at the end).',
     '4. Point out patterns: what I keep repeating, and which angles on the situation I missed.',
     "5. If a line only mocks someone's body, appearance, religion or caste, flag it and suggest an angle on the situation instead.",
-    ...meterRequest(6, 'this drill (number of usable jokes, sharpness of angles, tightness of wording)', previous.length),
+    ...meterRequest(6, 'this drill (how many jokes I wrote and how many are usable, sharpness of angles, tightness of wording)', previous.length),
     '7. End with one specific thing to try in my next drill.',
     ...STYLE,
     '',

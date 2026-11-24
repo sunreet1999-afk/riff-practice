@@ -39,6 +39,8 @@ src/
 - `/journal` quick-add observation notes; "Use as prompt" opens `/prompt?note=ID`
 - Home: pick drill length 1 / 2 / 5 / 10 min or ∞ (no limit); the choice is remembered (`settings.drillLength`)
 - `/drill/:id` unlimited lines, no structure labels; earlier lines lock; timed drills count down from `session.endsAt` (wall clock), ∞ drills (`endsAt: null`) count up and end only on Finish
+- When a timed drill runs out, a "Time's up" sheet offers +1 / +2 / +5 min, ∞ or Finish & save (`repo.extendDrill`). The first extension stores `plannedEndsAt`; the line being typed is stamped at the moment time ran out
+- Joke counts (`src/lib/drillStats.ts`): written lines; split into planned vs extra time via each line's `at` (ms after start). Shown in the drill header, time-up sheet, session detail, Sessions list, Home totals and the AI copy
 - Stages are independent: finishing the drill = Stage 1 complete (saved, counts for streak) and opens `/sessions/:id`
 - "Copy Stage 1 / Stage 2 for ChatGPT / Claude" (`src/lib/exportText.ts`) copies an analysis prompt + the drill + up to 3 earlier drills, and asks for an honest fixed-format progress meter (chat AIs don't remember earlier chats, so history travels in the paste)
 - `/judge/:id` optional Stage 2, any time later: pick best 2, optional rewrite with live grapheme count, rate 1–5, save
@@ -61,6 +63,7 @@ src/
 - Streak = consecutive local days with >= 1 `drilled` or `done` session; a run ending yesterday stays alive until today ends.
 - Multiple drills per day are allowed. Locked lines are persisted as you go (`lockLines`).
 - `lines[].structure` is empty for new drills (labels removed); older drills keep their label and show it.
+- `lines[].at` = ms after start when locked (missing on older drills, which count as planned time). `plannedEndsAt` is set only once a drill is extended.
 
 ## Commands
 - `npm run dev`        start dev server

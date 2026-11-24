@@ -1,4 +1,5 @@
 import { computeStreak, localDateKey } from '../lib/dates'
+import { extendedEndsAt, type Extension } from '../lib/drillStats'
 import { DEFAULT_DRILL_LENGTH, drillEndsAt, parseDrillLength, type DrillLength } from '../lib/timer'
 import type { DrillLine, JudgePick, Note, Prompt, PromptKind, Reaction, Session, SessionWithPrompt } from '../types'
 import { db as defaultDb, type PunchLabDB } from './db'
@@ -51,6 +52,33 @@ export function createRepo(db: PunchLabDB = defaultDb) {
     /** Persists locked lines as the drill goes, so a closed tab loses at most the line being typed. */
     async lockLines(id: number, lines: DrillLine[]): Promise<void> {
       await db.sessions.update(id, { lines })
+    },
+
+    /**
+     * Gives a running drill more time (or no limit) once its timer has run out.
+     * The first extension remembers the original end so jokes in extra time can be counted separately.
+     */
+    async extendDrill(id: number, extension: Extension, lines: DrillLine[], now: Date = new Date()): Promise<void> {
+      await db.transaction('rw', db.sessions, async () => {
+        const session = await db.sessions.get(id)
+        if (!session || session.status !== 'drilling') return
+        const plannedEndsAt = session.plannedEndsAt !== undefined ? session.plannedEndsAt : session.endsAt
+        await db.sessions.update(id, { lines, plannedEndsAt, endsAt: extendedEndsAt(now.getTime(), extension) })
+      })
+    },
+
+    /** Jokes (written lines) in completed drills: today and all time. */
+    async getJokeTotals(now: Date = new Date()): Promise<{ today: number; total: number; drills: number }> {
+      const completed = await db.sessions.where('status').anyOf('drilled', 'done').toArray()
+      const today = localDateKey(now)
+      let total = 0
+      let todayCount = 0
+      for (const s of completed) {
+        const n = s.lines.filter((l) => l.text).length
+        total += n
+        if (s.dateKey === today) todayCount += n
+      }
+      return { today: todayCount, total, drills: completed.length }
     },
 
     /** Ends Stage 1. The drill is saved and counts toward the streak; judging is optional. */

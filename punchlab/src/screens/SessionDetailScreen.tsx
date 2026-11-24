@@ -9,7 +9,9 @@ import { Toast } from '../components/Toast'
 import { repo } from '../db/repo'
 import { lineLabel } from '../lib/lineLabel'
 import { stage1ForAI, stage2ForAI } from '../lib/exportText'
-import { formatDay, formatDuration, formatTime } from '../lib/format'
+import { countJokes, jokesLabel, jokesPerMinute, plannedEnd, wasExtended } from '../lib/drillStats'
+import { formatDay, formatTime } from '../lib/format'
+import { describeDrillLength } from '../lib/timer'
 import type { DrillLine, Reaction, Session, SessionWithPrompt } from '../types'
 
 interface DetailLocationState {
@@ -54,7 +56,10 @@ function Detail({ session }: { session: Session }) {
   const written = session.lines.filter((l) => l.text)
   const skipped = session.lines.length - written.length
   const others = written.filter((l) => !pickedSlots.has(l.slot))
-  const duration = session.finishedAt ? formatDuration(session.finishedAt - session.startedAt) : null
+  const jokes = countJokes(session)
+  const pace = jokesPerMinute(session)
+  const firstEnd = plannedEnd(session)
+  const plannedMin = firstEnd === null ? null : Math.round((firstEnd - session.startedAt) / 60_000)
 
   return (
     <AppShell title="Session" action={<BackLink to="/sessions" />}>
@@ -62,9 +67,21 @@ function Detail({ session }: { session: Session }) {
       {state?.saved && <Toast message="Stage 2 complete. Share your best lines and log how they land." />}
 
       <p className="text-sm text-muted">
-        {formatDay(session.startedAt)} · {formatTime(session.startedAt)}
-        {duration && ` · ${duration} min`} · {written.length} line{written.length === 1 ? '' : 's'}
+        {formatDay(session.startedAt)} · {formatTime(session.startedAt)} · {describeDrillLength(session)}
       </p>
+
+      <section aria-label="Joke count" className="flex items-center gap-4 rounded-2xl bg-surface p-4">
+        <p className="text-4xl font-bold text-accent tabular-nums">{jokes.total}</p>
+        <div className="min-w-0 text-sm">
+          <p className="text-base font-semibold">{jokes.total === 1 ? 'joke' : 'jokes'} written</p>
+          {wasExtended(session) && plannedMin !== null && (
+            <p className="text-muted">
+              {jokesLabel(jokes.planned)} in the planned {plannedMin} min · {jokes.extra} in extra time
+            </p>
+          )}
+          {pace !== null && <p className="text-muted">{pace} per minute</p>}
+        </div>
+      </section>
 
       {prompt && (
         <section className="rounded-2xl bg-surface p-4">

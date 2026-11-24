@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import { PromptThumb } from '../components/PromptThumb'
 import { repo } from '../db/repo'
+import { countJokes, jokesLabel } from '../lib/drillStats'
 import { average, formatDay } from '../lib/format'
 import type { SessionWithPrompt } from '../types'
 
 function SessionRow({ item }: { item: SessionWithPrompt }) {
   const { session, prompt } = item
-  const written = session.lines.filter((l) => l.text).length
+  const jokes = countJokes(session).total
   const avg = average(session.picks.map((p) => p.rating))
   const title = prompt?.text || (prompt?.kind === 'image' ? 'Photo prompt' : 'Prompt')
   return (
@@ -18,7 +19,7 @@ function SessionRow({ item }: { item: SessionWithPrompt }) {
         <div className="min-w-0 flex-1">
           <p className="truncate">{title}</p>
           <p className="text-sm text-muted">
-            {formatDay(session.startedAt)} · {written} line{written === 1 ? '' : 's'} ·{' '}
+            {formatDay(session.startedAt)} · {jokesLabel(jokes)} ·{' '}
             {session.status === 'done' ? (avg !== null ? `★ ${avg}` : 'Judged') : 'Not judged'}
           </p>
         </div>

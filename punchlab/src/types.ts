@@ -25,6 +25,8 @@ export interface DrillLine {
   /** Structure label from older drills; new drills leave it empty (no labels while writing). */
   structure: string
   text: string
+  /** Ms after the drill started when the line was locked; tells planned time from extra time. Missing on older drills. */
+  at?: number
 }
 
 export interface JudgePick {
@@ -43,6 +45,8 @@ export interface Session {
   startedAt: number
   /** Wall-clock time the drill timer ends (drives the countdown so it survives tab switches); null = no time limit. */
   endsAt: number | null
+  /** The original end time, set the first time a drill is extended past it (null = started with no limit). */
+  plannedEndsAt?: number | null
   finishedAt?: number
   /** Locked lines in order (empty text = skipped). The line being typed is slot `lines.length`. No upper limit. */
   lines: DrillLine[]

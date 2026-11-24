@@ -32,8 +32,10 @@ describe('stage1ForAI', () => {
 
   it('includes the prompt, drill length and written lines numbered like the app, without labels', () => {
     expect(text).toContain('Prompt: Shaadi mein DJ')
-    expect(text).toContain('Drill: 2 min, 2 lines written')
-    expect(stage1ForAI({ ...session, endsAt: null, finishedAt: start + 192_000 }, prompt)).toContain('Drill: no time limit, took 3:12, 2 lines written')
+    expect(text).toContain('Drill: 2 min\nJokes written: 2 jokes (skipped lines left out)')
+    expect(stage1ForAI({ ...session, endsAt: null, finishedAt: start + 192_000 }, prompt)).toContain(
+      'Drill: no time limit, took 3:12\nJokes written: 2 jokes, 0.6 per minute',
+    )
     expect(text).toContain('1. Chacha ka josh dekh ke DJ ne overtime maanga')
     expect(text).toContain('3. नाच नचाया')
     expect(text).not.toContain('Literal interpretation]')
@@ -104,7 +106,7 @@ describe('progress meter', () => {
     const text = stage1ForAI(session, prompt, [earlier(23, ['kal ki line']), earlier(21, many)])
     expect(text).toContain('Earlier drills: X/10, X/10 (newest first)') // one slot per earlier drill
     expect(text).toContain('Previous drills, newest first (2):')
-    expect(text).toMatch(/\[Earlier drill 1\] .*, 5 min, 1 line\nPrompt: prompt 23\n1\. kal ki line/)
+    expect(text).toMatch(/\[Earlier drill 1\] .*, 5 min, 1 joke\nPrompt: prompt 23\n1\. kal ki line/)
     expect(text).toContain('15. old 15')
     expect(text).not.toContain('16. old 16')
     expect(text).toContain('(+3 more lines not shown)')
@@ -121,5 +123,25 @@ describe('progress meter', () => {
     expect(text).toContain('Compare my best lines and my judgement')
     expect(text).toContain('My picks then:\n- Line 1, self-rating 3/5\n  Original: purani line')
     expect(stage1ForAI(now, prompt, [judgedBefore])).not.toContain('My picks then:')
+  })
+})
+
+describe('joke counts in the AI copy', () => {
+  it('splits planned and extra time when the drill was extended', () => {
+    const extended: Session = {
+      ...session,
+      endsAt: null,
+      plannedEndsAt: start + 120_000,
+      finishedAt: start + 240_000,
+      lines: [
+        { slot: 0, structure: '', text: 'a', at: 30_000 },
+        { slot: 1, structure: '', text: 'b', at: 110_000 },
+        { slot: 2, structure: '', text: 'c', at: 200_000 },
+      ],
+    }
+    const text = stage1ForAI(extended, prompt)
+    expect(text).toContain('Drill: 2 min planned, then no limit, took 4:00 in total')
+    expect(text).toContain('Jokes written: 3 jokes (2 in the planned 2 min, 1 in extra time), 0.8 per minute')
+    expect(text).toContain('how many jokes I wrote and how many are usable')
   })
 })

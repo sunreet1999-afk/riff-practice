@@ -24,6 +24,12 @@ describe('drill timer', () => {
     expect(describeDrillLength({ startedAt: start, endsAt: drillEndsAt(start, 2) })).toBe('2 min')
     expect(describeDrillLength({ startedAt: start, endsAt: null, finishedAt: start + 192_000 })).toBe('no time limit, took 3:12')
     expect(describeDrillLength({ startedAt: start, endsAt: null })).toBe('no time limit')
+    expect(describeDrillLength({ startedAt: start, plannedEndsAt: start + 300_000, endsAt: start + 450_000, finishedAt: start + 450_000 })).toBe(
+      '5 min planned, extended, took 7:30 in total',
+    )
+    expect(describeDrillLength({ startedAt: start, plannedEndsAt: start + 300_000, endsAt: null, finishedAt: start + 552_000 })).toBe(
+      '5 min planned, then no limit, took 9:12 in total',
+    )
   })
 
   it('never expires an unlimited drill and counts its time up', () => {
